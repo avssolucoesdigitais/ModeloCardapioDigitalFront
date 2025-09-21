@@ -1,8 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
-import { addDoc, collection, getDocs } from "firebase/firestore";
+import { useState, useMemo } from "react";
+import { addDoc, collection } from "firebase/firestore";
 import { db } from "../firebase";
+import useLojaConfig from "../hooks/useLojaConfig";
 
-export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
+export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = "daypizza" }) {
+  const { config, loading: loadingConfig } = useLojaConfig(lojaId);
+
   const [nome, setNome] = useState("");
   const [phone, setPhone] = useState("");
   const [entrega, setEntrega] = useState("entrega");
@@ -13,21 +16,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
   const [pagamento, setPagamento] = useState("pix");
   const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
-  const [bairrosDisponiveis, setBairrosDisponiveis] = useState([]);
-
-  useEffect(() => {
-    const fetchBairros = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, "bairros"));
-        setBairrosDisponiveis(
-          snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-        );
-      } catch (e) {
-        console.error("Erro ao carregar bairros:", e);
-      }
-    };
-    fetchBairros();
-  }, []);
 
   const itensCarrinho = cart.items || [];
 
@@ -40,13 +28,23 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
 
   const taxaEntrega = useMemo(() => {
     if (entrega !== "entrega") return 0;
-    const b = bairrosDisponiveis.find((b) => b.nome === bairro);
+    const b = config?.bairros?.find((b) => b.nome === bairro);
     return b ? Number(b.taxa || 0) : 0;
-  }, [bairro, entrega, bairrosDisponiveis]);
+  }, [bairro, entrega, config]);
 
   const total = subtotal + taxaEntrega;
 
   if (!open) return null;
+
+  if (loadingConfig || !config) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center">
+          Carregando configuração da loja…
+        </div>
+      </div>
+    );
+  }
 
   const handleConfirmar = async () => {
     if (!nome.trim()) return alert("Digite seu nome.");
@@ -63,7 +61,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
           ? `${rua}, ${numero} - ${bairro} (Ref: ${referencia || "—"})`
           : "RETIRADA NA LOJA";
 
-      // 🔹 gera número único do pedido
       const orderNumber = Date.now().toString().slice(-6);
 
       await addDoc(collection(db, "orders"), {
@@ -84,7 +81,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
         createdAt: new Date().toISOString(),
       });
 
-      // 🔹 mensagem para admin
       let msg = `🛒 *Novo Pedido #${orderNumber}*%0A`;
       msg += `👤 Cliente: ${nome}%0A`;
       msg += `📱 WhatsApp: ${phone}%0A`;
@@ -115,7 +111,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
         if (Array.isArray(item.flavors) && item.flavors.length > 0) {
           desc += ` [${item.flavors.join(" + ")}]`;
         }
-
         msg += `- ${desc} (R$ ${price})%0A`;
       });
 
@@ -123,11 +118,9 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
       msg += `🚚 *Taxa de entrega:* R$ ${taxaEntrega.toFixed(2)}%0A`;
       msg += `✅ *Total:* R$ ${total.toFixed(2)}`;
 
-      let adminPhone = "558999999999"; // fallback
+      let adminPhone = "558999999999";
       if (typeof whatsapp === "string" && whatsapp.trim()) {
-        adminPhone = whatsapp.startsWith("55")
-          ? whatsapp
-          : `55${whatsapp}`;
+        adminPhone = whatsapp.startsWith("55") ? whatsapp : `55${whatsapp}`;
       }
 
       const url = `https://wa.me/${adminPhone}?text=${msg}`;
@@ -201,7 +194,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
           </select>
         </label>
 
-        {/* Endereço se for entrega */}
+        {/* Endereço */}
         {entrega === "entrega" && (
           <div className="mb-4 space-y-3">
             <label className="block">
@@ -212,8 +205,8 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp }) {
                 onChange={(e) => setBairro(e.target.value)}
               >
                 <option value="">Selecione...</option>
-                {bairrosDisponiveis.map((b) => (
-                  <option key={b.id} value={b.nome}>
+                {config.bairros?.map((b, idx) => (
+                  <option key={idx} value={b.nome}>
                     {b.nome} - R$ {Number(b.taxa).toFixed(2)}
                   </option>
                 ))}

@@ -9,7 +9,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
 
   const [activeTab, setActiveTab] = useState("loja");
 
-  // Config principal (inclui bairros e horarios)
   const [config, setConfig] = useState({
     nomeLoja: "",
     logoUrl: "",
@@ -30,14 +29,11 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   });
 
   const [saving, setSaving] = useState(false);
-
-  // Campos para adicionar bairro
   const [bairroNome, setBairroNome] = useState("");
   const [bairroTaxa, setBairroTaxa] = useState("");
 
   useEffect(() => {
     if (!user) return;
-
     const loadConfig = async () => {
       const ref = doc(db, "lojas", lojaId, "config", "principal");
       const snap = await getDoc(ref);
@@ -45,11 +41,9 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
         setConfig((prev) => ({ ...prev, ...snap.data() }));
       }
     };
-
     loadConfig();
   }, [user, lojaId]);
 
-  // 🔹 Salvar Config Loja
   const saveConfig = async () => {
     try {
       setSaving(true);
@@ -64,19 +58,15 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     }
   };
 
-  // 🔹 Bairros
   const handleAddBairro = async () => {
     if (!bairroNome || !bairroTaxa)
       return toast.error("⚠️ Preencha todos os campos!");
-
     const novos = [
       ...config.bairros,
       { nome: bairroNome, taxa: Number(bairroTaxa) },
     ];
-
     const ref = doc(db, "lojas", lojaId, "config", "principal");
     await setDoc(ref, { ...config, bairros: novos }, { merge: true });
-
     setConfig((prev) => ({ ...prev, bairros: novos }));
     setBairroNome("");
     setBairroTaxa("");
@@ -93,7 +83,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     }
   };
 
-  // 🔹 Horários
   const handleSaveHorarios = async () => {
     const ref = doc(db, "lojas", lojaId, "config", "principal");
     await setDoc(ref, { ...config }, { merge: true });
@@ -107,7 +96,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     <div className="max-w-5xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">⚙️ Configuração da Loja</h1>
 
-      {/* 🔹 Abas */}
+      {/* Abas */}
       <div className="flex gap-4 border-b mb-6">
         {[
           { id: "loja", label: "🏪 Loja" },
@@ -128,7 +117,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
         ))}
       </div>
 
-      {/* 🔹 Aba Loja */}
+      {/* Aba Loja */}
       {activeTab === "loja" && (
         <section className="bg-white rounded-xl shadow p-6 border space-y-4">
           <input
@@ -138,7 +127,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
             className="border p-2 rounded w-full"
           />
-
           <input
             type="text"
             placeholder="URL da Logo"
@@ -146,7 +134,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             onChange={(e) => setConfig({ ...config, logoUrl: e.target.value })}
             className="border p-2 rounded w-full"
           />
-
           <input
             type="text"
             placeholder="URL do Banner"
@@ -154,7 +141,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             onChange={(e) => setConfig({ ...config, bannerUrl: e.target.value })}
             className="border p-2 rounded w-full"
           />
-
           <div className="flex gap-4">
             <label className="flex items-center gap-2">
               Cor primária:
@@ -166,7 +152,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
                 }
               />
             </label>
-
             <label className="flex items-center gap-2">
               Cor secundária:
               <input
@@ -178,7 +163,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
               />
             </label>
           </div>
-
           <input
             type="text"
             placeholder="WhatsApp (ex: 5588981356668)"
@@ -186,7 +170,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             onChange={(e) => setConfig({ ...config, whatsapp: e.target.value })}
             className="border p-2 rounded w-full"
           />
-
           <button
             onClick={saveConfig}
             disabled={saving}
@@ -197,7 +180,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
         </section>
       )}
 
-      {/* 🔹 Aba Bairros */}
+      {/* Aba Bairros */}
       {activeTab === "bairros" && (
         <section className="bg-white rounded-xl shadow p-6 border">
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -240,7 +223,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
         </section>
       )}
 
-      {/* 🔹 Aba Horários */}
+      {/* Aba Horários */}
       {activeTab === "horarios" && (
         <section className="bg-white rounded-xl shadow p-6 border">
           <div className="grid gap-2">
