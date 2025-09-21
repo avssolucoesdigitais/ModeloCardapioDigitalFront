@@ -1,14 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "../firebase";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  getDocs,
-  addDoc,
-  deleteDoc,
-} from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import useAuth from "../hooks/useAuth";
 import toast from "react-hot-toast";
 
@@ -17,7 +9,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
 
   const [activeTab, setActiveTab] = useState("loja");
 
-  // Config principal
+  // Config principal (inclui bairros e horarios)
   const [config, setConfig] = useState({
     nomeLoja: "",
     logoUrl: "",
@@ -25,24 +17,23 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     primaryColor: "#009DFF",
     secondaryColor: "#0C2340",
     whatsapp: "",
+    bairros: [],
+    horarios: {
+      domingo: { abre: "", fecha: "" },
+      segunda: { abre: "", fecha: "" },
+      terca: { abre: "", fecha: "" },
+      quarta: { abre: "", fecha: "" },
+      quinta: { abre: "", fecha: "" },
+      sexta: { abre: "", fecha: "" },
+      sabado: { abre: "", fecha: "" },
+    },
   });
+
   const [saving, setSaving] = useState(false);
 
-  // Bairros
-  const [bairros, setBairros] = useState([]);
+  // Campos para adicionar bairro
   const [bairroNome, setBairroNome] = useState("");
   const [bairroTaxa, setBairroTaxa] = useState("");
-
-  // Horários
-  const [horarios, setHorarios] = useState({
-    domingo: { abre: "", fecha: "" },
-    segunda: { abre: "", fecha: "" },
-    terca: { abre: "", fecha: "" },
-    quarta: { abre: "", fecha: "" },
-    quinta: { abre: "", fecha: "" },
-    sexta: { abre: "", fecha: "" },
-    sabado: { abre: "", fecha: "" },
-  });
 
   useEffect(() => {
     if (!user) return;
@@ -50,23 +41,12 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     const loadConfig = async () => {
       const ref = doc(db, "lojas", lojaId, "config", "principal");
       const snap = await getDoc(ref);
-      if (snap.exists()) setConfig((prev) => ({ ...prev, ...snap.data() }));
-    };
-
-    const loadBairros = async () => {
-      const snap = await getDocs(collection(db, "bairros"));
-      setBairros(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    };
-
-    const loadHorarios = async () => {
-      const ref = doc(db, "config", "funcionamento");
-      const snap = await getDoc(ref);
-      if (snap.exists()) setHorarios(snap.data().horarios || horarios);
+      if (snap.exists()) {
+        setConfig((prev) => ({ ...prev, ...snap.data() }));
+      }
     };
 
     loadConfig();
-    loadBairros();
-    loadHorarios();
   }, [user, lojaId]);
 
   // 🔹 Salvar Config Loja
@@ -86,30 +66,37 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
 
   // 🔹 Bairros
   const handleAddBairro = async () => {
-    if (!bairroNome || !bairroTaxa) return toast.error("⚠️ Preencha todos os campos!");
-    await addDoc(collection(db, "bairros"), {
-      nome: bairroNome,
-      taxa: Number(bairroTaxa),
-    });
+    if (!bairroNome || !bairroTaxa)
+      return toast.error("⚠️ Preencha todos os campos!");
+
+    const novos = [
+      ...config.bairros,
+      { nome: bairroNome, taxa: Number(bairroTaxa) },
+    ];
+
+    const ref = doc(db, "lojas", lojaId, "config", "principal");
+    await setDoc(ref, { ...config, bairros: novos }, { merge: true });
+
+    setConfig((prev) => ({ ...prev, bairros: novos }));
     setBairroNome("");
     setBairroTaxa("");
     toast.success("🚚 Bairro adicionado!");
-    const snap = await getDocs(collection(db, "bairros"));
-    setBairros(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   };
 
-  const handleDeleteBairro = async (id) => {
+  const handleDeleteBairro = async (nome) => {
     if (confirm("Excluir bairro?")) {
-      await deleteDoc(doc(db, "bairros", id));
+      const novos = config.bairros.filter((b) => b.nome !== nome);
+      const ref = doc(db, "lojas", lojaId, "config", "principal");
+      await setDoc(ref, { ...config, bairros: novos }, { merge: true });
+      setConfig((prev) => ({ ...prev, bairros: novos }));
       toast.success("🗑️ Bairro excluído!");
-      const snap = await getDocs(collection(db, "bairros"));
-      setBairros(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     }
   };
 
   // 🔹 Horários
   const handleSaveHorarios = async () => {
-    await setDoc(doc(db, "config", "funcionamento"), { horarios });
+    const ref = doc(db, "lojas", lojaId, "config", "principal");
+    await setDoc(ref, { ...config }, { merge: true });
     toast.success("⏰ Horários salvos!");
   };
 
@@ -174,7 +161,9 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
               <input
                 type="color"
                 value={config.primaryColor}
-                onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
+                onChange={(e) =>
+                  setConfig({ ...config, primaryColor: e.target.value })
+                }
               />
             </label>
 
@@ -183,7 +172,9 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
               <input
                 type="color"
                 value={config.secondaryColor}
-                onChange={(e) => setConfig({ ...config, secondaryColor: e.target.value })}
+                onChange={(e) =>
+                  setConfig({ ...config, secondaryColor: e.target.value })
+                }
               />
             </label>
           </div>
@@ -232,13 +223,13 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             </button>
           </div>
           <ul className="divide-y">
-            {bairros.map((b) => (
-              <li key={b.id} className="flex justify-between items-center py-2">
+            {config.bairros?.map((b, idx) => (
+              <li key={idx} className="flex justify-between items-center py-2">
                 <span>
                   {b.nome} — R$ {b.taxa.toFixed(2)}
                 </span>
                 <button
-                  onClick={() => handleDeleteBairro(b.id)}
+                  onClick={() => handleDeleteBairro(b.nome)}
                   className="text-red-500 hover:underline"
                 >
                   Excluir
@@ -253,16 +244,22 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       {activeTab === "horarios" && (
         <section className="bg-white rounded-xl shadow p-6 border">
           <div className="grid gap-2">
-            {Object.keys(horarios).map((dia) => (
+            {Object.keys(config.horarios).map((dia) => (
               <div key={dia} className="flex items-center gap-2">
                 <span className="capitalize w-24">{dia}:</span>
                 <input
                   type="time"
-                  value={horarios[dia]?.abre || ""}
+                  value={config.horarios[dia]?.abre || ""}
                   onChange={(e) =>
-                    setHorarios({
-                      ...horarios,
-                      [dia]: { ...horarios[dia], abre: e.target.value },
+                    setConfig({
+                      ...config,
+                      horarios: {
+                        ...config.horarios,
+                        [dia]: {
+                          ...config.horarios[dia],
+                          abre: e.target.value,
+                        },
+                      },
                     })
                   }
                   className="border p-2 rounded"
@@ -270,11 +267,17 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
                 <span>às</span>
                 <input
                   type="time"
-                  value={horarios[dia]?.fecha || ""}
+                  value={config.horarios[dia]?.fecha || ""}
                   onChange={(e) =>
-                    setHorarios({
-                      ...horarios,
-                      [dia]: { ...horarios[dia], fecha: e.target.value },
+                    setConfig({
+                      ...config,
+                      horarios: {
+                        ...config.horarios,
+                        [dia]: {
+                          ...config.horarios[dia],
+                          fecha: e.target.value,
+                        },
+                      },
                     })
                   }
                   className="border p-2 rounded"
