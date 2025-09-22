@@ -18,22 +18,35 @@ export default function OrdersAdmin() {
 
   // 🔹 Desbloquear som na primeira interação do usuário
   useEffect(() => {
-    const unlockAudio = () => {
+  const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+  const unsub = onSnapshot(q, (snapshot) => {
+    const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    setOrders(docs);
+
+    // 🔔 Verificar se existe algum pedido novo PENDENTE que não existia antes
+    const pedidosPendentesNovos = docs.filter(
+      (o) =>
+        (o.status || "").trim().toUpperCase() === "PENDENTE" &&
+        !prevCountRef.current.includes(o.id) // só toca se for realmente novo
+    );
+
+    if (pedidosPendentesNovos.length > 0) {
+      toast.success("📦 Novo pedido recebido!");
       if (audioRef.current) {
+        audioRef.current.currentTime = 0;
         audioRef.current
           .play()
-          .then(() => {
-            audioRef.current.pause(); // toca e pausa só pra desbloquear
-            audioRef.current.currentTime = 0;
-          })
-          .catch(() => {});
+          .catch((err) => console.error("Erro ao tocar áudio:", err));
       }
-      document.removeEventListener("click", unlockAudio);
-    };
+    }
 
-    document.addEventListener("click", unlockAudio);
-    return () => document.removeEventListener("click", unlockAudio);
-  }, []);
+    // Atualiza a lista de IDs já notificados
+    prevCountRef.current = docs.map((o) => o.id);
+  });
+
+  return () => unsub();
+}, []);
+
 
   // 🔹 Carregar pedidos em tempo real
   useEffect(() => {

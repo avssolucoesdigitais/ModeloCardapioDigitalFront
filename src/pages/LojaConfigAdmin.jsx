@@ -24,13 +24,10 @@ async function uploadToCloudinary(file) {
   formData.append("file", file);
   formData.append("upload_preset", uploadPreset);
 
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/upload`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+    method: "POST",
+    body: formData,
+  });
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error?.message || "Erro no upload");
@@ -81,7 +78,6 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   const saveConfig = async () => {
     try {
       setSaving(true);
-
       const ref = doc(db, "lojas", lojaId, "config", "principal");
       await setDoc(ref, config, { merge: true });
       toast.success("✅ Configuração da loja salva!");
@@ -96,10 +92,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   const handleAddBairro = async () => {
     if (!bairroNome || !bairroTaxa)
       return toast.error("⚠️ Preencha todos os campos!");
-    const novos = [
-      ...config.bairros,
-      { nome: bairroNome, taxa: Number(bairroTaxa) },
-    ];
+    const novos = [...config.bairros, { nome: bairroNome, taxa: Number(bairroTaxa) }];
     const ref = doc(db, "lojas", lojaId, "config", "principal");
     await setDoc(ref, { ...config, bairros: novos }, { merge: true });
     setConfig((prev) => ({ ...prev, bairros: novos }));
@@ -128,11 +121,11 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   if (!user) return <p>❌ Acesso negado</p>;
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6">
       <h1 className="text-2xl font-bold mb-6">⚙️ Configuração da Loja</h1>
 
       {/* Abas */}
-      <div className="flex gap-4 border-b mb-6">
+      <div className="flex flex-wrap gap-4 border-b mb-6">
         {[
           { id: "loja", label: "🏪 Loja" },
           { id: "bairros", label: "🚚 Bairros" },
@@ -155,76 +148,69 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       {/* Aba Loja */}
       {activeTab === "loja" && (
         <section className="bg-white rounded-xl shadow p-6 border space-y-4">
-          <input
-            type="text"
-            placeholder="Nome da Loja"
-            value={config.nomeLoja}
-            onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
-            className="border p-2 rounded w-full"
-          />
-
-          {/* Instagram */}
-          <input
-            type="text"
-            placeholder="Link do Instagram (ex: https://instagram.com/daypizza)"
-            value={config.instagram}
-            onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
-            className="border p-2 rounded w-full"
-          />
-
-          {/* Upload da Logo */}
-          <div>
-            <label className="block font-semibold mb-1">Logo:</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
-              type="file"
-              accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const url = await uploadToCloudinary(file);
-                setConfig({ ...config, logoUrl: url });
-              }}
+              type="text"
+              placeholder="Nome da Loja"
+              value={config.nomeLoja}
+              onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
+              className="border p-2 rounded w-full"
             />
-            {config.logoUrl && (
-              <img
-                src={config.logoUrl}
-                alt="Logo"
-                className="h-16 mt-2 rounded border"
-              />
-            )}
+
+            <input
+              type="text"
+              placeholder="Link do Instagram (ex: https://instagram.com/daypizza)"
+              value={config.instagram}
+              onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
+              className="border p-2 rounded w-full"
+            />
           </div>
 
-          {/* Upload do Banner */}
-          <div>
-            <label className="block font-semibold mb-1">Banner:</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const url = await uploadToCloudinary(file);
-                setConfig({ ...config, bannerUrl: url });
-              }}
-            />
-            {config.bannerUrl && (
-              <img
-                src={config.bannerUrl}
-                alt="Banner"
-                className="h-24 mt-2 rounded border"
+          {/* Uploads em grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block font-semibold mb-1">Logo:</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const url = await uploadToCloudinary(file);
+                  setConfig({ ...config, logoUrl: url });
+                }}
               />
-            )}
+              {config.logoUrl && (
+                <img src={config.logoUrl} alt="Logo" className="h-16 mt-2 rounded border" />
+              )}
+            </div>
+
+            <div>
+              <label className="block font-semibold mb-1">Banner:</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const url = await uploadToCloudinary(file);
+                  setConfig({ ...config, bannerUrl: url });
+                }}
+              />
+              {config.bannerUrl && (
+                <img src={config.bannerUrl} alt="Banner" className="h-24 mt-2 rounded border" />
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-4">
+          {/* Cores */}
+          <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2">
               Cor primária:
               <input
                 type="color"
                 value={config.primaryColor}
-                onChange={(e) =>
-                  setConfig({ ...config, primaryColor: e.target.value })
-                }
+                onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
               />
             </label>
             <label className="flex items-center gap-2">
@@ -232,12 +218,12 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
               <input
                 type="color"
                 value={config.secondaryColor}
-                onChange={(e) =>
-                  setConfig({ ...config, secondaryColor: e.target.value })
-                }
+                onChange={(e) => setConfig({ ...config, secondaryColor: e.target.value })}
               />
             </label>
           </div>
+
+          {/* WhatsApp */}
           <input
             type="text"
             placeholder="WhatsApp (ex: 5588981356668)"
@@ -245,10 +231,11 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             onChange={(e) => setConfig({ ...config, whatsapp: e.target.value })}
             className="border p-2 rounded w-full"
           />
+
           <button
             onClick={saveConfig}
             disabled={saving}
-            className="px-4 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg hover:opacity-90"
+            className="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg hover:opacity-90"
           >
             {saving ? "Salvando..." : "Salvar Configuração"}
           </button>
@@ -301,51 +288,51 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       {/* Aba Horários */}
       {activeTab === "horarios" && (
         <section className="bg-white rounded-xl shadow p-6 border">
-          <div className="grid gap-2">
-            {DIAS_ORDENADOS.map(({ key, label }) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="w-32">{label}:</span>
-                <input
-                  type="time"
-                  value={config.horarios[key]?.abre || ""}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      horarios: {
-                        ...config.horarios,
-                        [key]: {
-                          ...config.horarios[key],
-                          abre: e.target.value,
-                        },
-                      },
-                    })
-                  }
-                  className="border p-2 rounded"
-                />
-                <span>às</span>
-                <input
-                  type="time"
-                  value={config.horarios[key]?.fecha || ""}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      horarios: {
-                        ...config.horarios,
-                        [key]: {
-                          ...config.horarios[key],
-                          fecha: e.target.value,
-                        },
-                      },
-                    })
-                  }
-                  className="border p-2 rounded"
-                />
-              </div>
-            ))}
-          </div>
+        <div className="grid gap-4">
+  {DIAS_ORDENADOS.map(({ key, label }) => (
+    <div
+      key={key}
+      className="flex flex-col sm:flex-row sm:items-center sm:gap-3 border-b pb-3"
+    >
+      <span className="w-32 font-medium">{label}:</span>
+      <div className="flex gap-2 mt-2 sm:mt-0 w-full">
+        <input
+          type="time"
+          value={config.horarios[key]?.abre || ""}
+          onChange={(e) =>
+            setConfig({
+              ...config,
+              horarios: {
+                ...config.horarios,
+                [key]: { ...config.horarios[key], abre: e.target.value },
+              },
+            })
+          }
+          className="flex-1 border p-2 rounded"
+        />
+        <span className="flex items-center">às</span>
+        <input
+          type="time"
+          value={config.horarios[key]?.fecha || ""}
+          onChange={(e) =>
+            setConfig({
+              ...config,
+              horarios: {
+                ...config.horarios,
+                [key]: { ...config.horarios[key], fecha: e.target.value },
+              },
+            })
+          }
+          className="flex-1 border p-2 rounded"
+        />
+      </div>
+    </div>
+  ))}
+</div>
+
           <button
             onClick={handleSaveHorarios}
-            className="mt-4 px-4 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg hover:opacity-90"
+            className="mt-4 px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg hover:opacity-90"
           >
             Salvar Horários
           </button>
