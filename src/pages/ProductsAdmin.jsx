@@ -13,7 +13,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 // Função para upload no Cloudinary
 async function uploadToCloudinary(file) {
   const cloudName = "dze5gi1ft"; // seu cloud_name
-  const uploadPreset = "uhadthkk"; // 🔹 preset NÃO-ASSINADO
+  const uploadPreset = "uhadthkk"; // preset NÃO-ASSINADO
 
   const formData = new FormData();
   formData.append("file", file);
@@ -41,15 +41,21 @@ export default function ProductsAdmin() {
     image: "",
     prices: {},
     sizes: [],
+    adicionais: [], // [{nome, preco}]
+    bordas: [],     // [{nome, preco}]
   });
   const [newSize, setNewSize] = useState("");
+  const [newAddonName, setNewAddonName] = useState("");
+  const [newAddonPrice, setNewAddonPrice] = useState("");
+  const [newBordaName, setNewBordaName] = useState("");
+  const [newBordaPrice, setNewBordaPrice] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // carregar produtos
   const fetchProducts = async () => {
     const snapshot = await getDocs(collection(db, "products"));
-    const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const list = snapshot.docs.map((docu) => ({ id: docu.id, ...docu.data() }));
     list.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     setProducts(list);
   };
@@ -74,6 +80,14 @@ export default function ProductsAdmin() {
         available: true,
         prices: form.prices || {},
         sizes: form.sizes || [],
+        adicionais: (form.adicionais || []).map(a => ({
+          nome: String(a.nome || "").trim(),
+          preco: Number(a.preco || 0),
+        })),
+        bordas: (form.bordas || []).map(b => ({
+          nome: String(b.nome || "").trim(),
+          preco: Number(b.preco || 0),
+        })),
         ordem: form.ordem || products.length + 1,
       };
 
@@ -91,8 +105,14 @@ export default function ProductsAdmin() {
         image: "",
         prices: {},
         sizes: [],
+        adicionais: [],
+        bordas: [],
       });
       setNewSize("");
+      setNewAddonName("");
+      setNewAddonPrice("");
+      setNewBordaName("");
+      setNewBordaPrice("");
       await fetchProducts();
     } finally {
       setLoading(false);
@@ -111,6 +131,8 @@ export default function ProductsAdmin() {
       ...p,
       prices: p.prices || {},
       sizes: p.sizes || [],
+      adicionais: p.adicionais || [],
+      bordas: p.bordas || [],
     });
     setEditingId(p.id);
   };
@@ -137,6 +159,42 @@ export default function ProductsAdmin() {
     const newPrices = { ...form.prices };
     delete newPrices[size];
     setForm({ ...form, sizes: newSizes, prices: newPrices });
+  };
+
+  const addAddon = () => {
+    const nome = newAddonName.trim();
+    const preco = Number(newAddonPrice);
+    if (!nome || isNaN(preco)) return;
+    setForm({
+      ...form,
+      adicionais: [...(form.adicionais || []), { nome, preco }],
+    });
+    setNewAddonName("");
+    setNewAddonPrice("");
+  };
+
+  const removeAddon = (idx) => {
+    const arr = [...(form.adicionais || [])];
+    arr.splice(idx, 1);
+    setForm({ ...form, adicionais: arr });
+  };
+
+  const addBorda = () => {
+    const nome = newBordaName.trim();
+    const preco = Number(newBordaPrice);
+    if (!nome || isNaN(preco)) return;
+    setForm({
+      ...form,
+      bordas: [...(form.bordas || []), { nome, preco }],
+    });
+    setNewBordaName("");
+    setNewBordaPrice("");
+  };
+
+  const removeBorda = (idx) => {
+    const arr = [...(form.bordas || [])];
+    arr.splice(idx, 1);
+    setForm({ ...form, bordas: arr });
   };
 
   // reordenar produtos via drag-and-drop
@@ -194,7 +252,7 @@ export default function ProductsAdmin() {
           className="w-full border rounded-lg px-3 py-2 mt-4"
         />
 
-        {/* Gerenciar tamanhos */}
+        {/* Tamanhos e Preços */}
         <div className="mt-4">
           <h3 className="font-semibold mb-2">Tamanhos</h3>
           <div className="flex gap-2">
@@ -270,10 +328,82 @@ export default function ProductsAdmin() {
           )}
         </div>
 
+        {/* Adicionais */}
+        <div className="mt-6">
+          <h3 className="font-semibold mb-2">Adicionais</h3>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="Ex: Queijo extra"
+              value={newAddonName}
+              onChange={(e) => setNewAddonName(e.target.value)}
+              className="flex-1 border rounded-lg px-3 py-2"
+            />
+            <input
+              type="number"
+              placeholder="Preço"
+              value={newAddonPrice}
+              onChange={(e) => setNewAddonPrice(e.target.value)}
+              className="w-32 border rounded-lg px-3 py-2"
+            />
+            <button
+              type="button"
+              onClick={addAddon}
+              className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              ➕
+            </button>
+          </div>
+          <div className="space-y-1">
+            {(form.adicionais || []).map((a, idx) => (
+              <div key={idx} className="flex justify-between items-center p-2 border rounded">
+                <span>{a.nome} — R$ {Number(a.preco).toFixed(2)}</span>
+                <button className="text-red-600" onClick={() => removeAddon(idx)}>❌</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bordas Recheadas */}
+        <div className="mt-6">
+          <h3 className="font-semibold mb-2">Bordas Recheadas</h3>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="Ex: Catupiry"
+              value={newBordaName}
+              onChange={(e) => setNewBordaName(e.target.value)}
+              className="flex-1 border rounded-lg px-3 py-2"
+            />
+            <input
+              type="number"
+              placeholder="Preço"
+              value={newBordaPrice}
+              onChange={(e) => setNewBordaPrice(e.target.value)}
+              className="w-32 border rounded-lg px-3 py-2"
+            />
+            <button
+              type="button"
+              onClick={addBorda}
+              className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              ➕
+            </button>
+          </div>
+          <div className="space-y-1">
+            {(form.bordas || []).map((b, idx) => (
+              <div key={idx} className="flex justify-between items-center p-2 border rounded">
+                <span>{b.nome} — R$ {Number(b.preco).toFixed(2)}</span>
+                <button className="text-red-600" onClick={() => removeBorda(idx)}>❌</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <button
           onClick={handleSaveProduct}
           disabled={loading}
-          className="mt-4 w-full px-4 py-2 rounded-lg text-white font-semibold 
+          className="mt-6 w-full px-4 py-2 rounded-lg text-white font-semibold 
                      bg-gradient-to-r from-[#009DFF] to-[#0066CC] hover:opacity-90"
         >
           {loading
@@ -300,11 +430,11 @@ export default function ProductsAdmin() {
               >
                 {products.map((p, index) => (
                   <Draggable key={p.id} draggableId={p.id} index={index}>
-                    {(provided) => (
+                    {(provided2) => (
                       <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
+                        ref={provided2.innerRef}
+                        {...provided2.draggableProps}
+                        {...provided2.dragHandleProps}
                         className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border rounded-lg bg-[#F5F6FA] hover:shadow"
                       >
                         <div className="flex items-center gap-4">
@@ -319,17 +449,22 @@ export default function ProductsAdmin() {
                             <h3 className="font-semibold text-[#0C2340]">
                               {p.name}
                             </h3>
-                            <p className="text-sm text-gray-600">
-                              {p.category}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {p.description}
-                            </p>
+                            <p className="text-sm text-gray-600">{p.category}</p>
+                            <p className="text-xs text-gray-500">{p.description}</p>
                             {p.sizes?.length > 0 && (
                               <p className="text-xs mt-1">
-                                <strong>Tamanhos:</strong>{" "}
-                                {p.sizes.join(", ")}
+                                <strong>Tamanhos:</strong> {p.sizes.join(", ")}
                               </p>
+                            )}
+                            {(p.adicionais?.length > 0 || p.bordas?.length > 0) && (
+                              <div className="text-xs mt-1 text-gray-700">
+                                {p.adicionais?.length > 0 && (
+                                  <div>Adicionais: {p.adicionais.map(a=>`${a.nome}(R$${Number(a.preco).toFixed(2)})`).join(", ")}</div>
+                                )}
+                                {p.bordas?.length > 0 && (
+                                  <div>Bordas: {p.bordas.map(b=>`${b.nome}(R$${Number(b.preco).toFixed(2)})`).join(", ")}</div>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>

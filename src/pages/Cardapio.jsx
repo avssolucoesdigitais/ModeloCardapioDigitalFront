@@ -13,118 +13,24 @@ import { FaInstagram, FaPizzaSlice, FaHamburger, FaCocktail } from "react-icons/
 import { GiFullPizza, GiFrenchFries, GiHotDog, GiSodaCan } from "react-icons/gi";
 import { MdLocalOffer } from "react-icons/md";
 
-// 🔹 Modal Meio a Meio
-function MeioMeioModal({ open, onClose, products, onAdd }) {
-  const [tamanho, setTamanho] = useState("media");
-  const [sabor1, setSabor1] = useState(null);
-  const [sabor2, setSabor2] = useState(null);
+// 🔹 usa o novo wizard unificado
+import PizzaBuilderModal from "../componets/PizzaBuilderModal";
 
-  if (!open) return null;
-
-  const pizzas = products.filter(
-    (p) => p.category?.toLowerCase() === "pizza" && p.available !== false
-  );
-
-  const handleConfirm = () => {
-    if (!sabor1 || !sabor2) return alert("Escolha dois sabores!");
-
-    const preco1 = Number(sabor1.prices?.[tamanho] || 0);
-    const preco2 = Number(sabor2.prices?.[tamanho] || 0);
-
-    if (!preco1 || !preco2) {
-      return alert("Esse tamanho não está disponível para um dos sabores.");
-    }
-
-    const price = preco1 / 2 + preco2 / 2;
-
-    onAdd({
-      id: `meio-${tamanho}-${sabor1.id}-${sabor2.id}`,
-      name: "Pizza Meio a Meio",
-      flavors: [sabor1.name, sabor2.name],
-      price,
-      qty: 1,
-      size: tamanho,
-      image: sabor1.image || sabor2.image || null,
-    });
-
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full animate-fade-in">
-        <h2 className="text-lg font-bold mb-4">🍕 Escolha 2 Sabores</h2>
-        {/* tamanho */}
-        <select
-          className="w-full border p-2 rounded mb-3"
-          value={tamanho}
-          onChange={(e) => {
-            setTamanho(e.target.value);
-            setSabor1(null);
-            setSabor2(null);
-          }}
-        >
-          <option value="pequena">Pequena</option>
-          <option value="media">Média</option>
-          <option value="grande">Grande</option>
-        </select>
-        {/* sabor 1 */}
-        <select
-          className="w-full border p-2 rounded mb-3"
-          value={sabor1?.id || ""}
-          onChange={(e) => setSabor1(pizzas.find((p) => p.id === e.target.value))}
-        >
-          <option value="">Sabor 1</option>
-          {pizzas.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} - R$ {Number(p.prices?.[tamanho]).toFixed(2)}
-            </option>
-          ))}
-        </select>
-        {/* sabor 2 */}
-        <select
-          className="w-full border p-2 rounded mb-3"
-          value={sabor2?.id || ""}
-          onChange={(e) => setSabor2(pizzas.find((p) => p.id === e.target.value))}
-        >
-          <option value="">Sabor 2</option>
-          {pizzas.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} - R$ {Number(p.prices?.[tamanho]).toFixed(2)}
-            </option>
-          ))}
-        </select>
-        <div className="flex gap-3">
-          <button
-            onClick={handleConfirm}
-            className="flex-1 bg-yellow-500 text-white py-2 rounded-lg shadow hover:bg-yellow-600 transition"
-          >
-            Adicionar
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 border py-2 rounded-lg hover:bg-gray-100"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 🔹 Cardápio
 export default function Cardapio() {
   const cart = useCart();
   const { config } = useLojaConfig("daypizza");
+
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Todas");
-  const [meioMeioOpen, setMeioMeioOpen] = useState(false);
 
-  // 🔹 Produtos em tempo real
+  // modal de montar pizza
+  const [pizzaOpen, setPizzaOpen] = useState(false);
+  const [basePizza, setBasePizza] = useState(null);
+  const [pizzaPreset, setPizzaPreset] = useState(null); // 👈 preset (size + sabor)
+
   useEffect(() => {
     const q = query(collection(db, "products"), orderBy("ordem", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -153,7 +59,7 @@ export default function Cardapio() {
       ? [{ name: "Todas", icon: <GiFullPizza /> }, ...availableCategories]
       : [];
 
-  // 🔹 Agrupar por subcategoria
+  // agrupar por subcategoria
   const groupedProducts = products
     .filter(
       (p) =>
@@ -168,6 +74,24 @@ export default function Cardapio() {
       return acc;
     }, {});
 
+  // 👉 embrulha o onAdd do ProductCard:
+  const makeOnAdd = (p) => (itemFromCard) => {
+    const isPizza = p.category?.toLowerCase() === "pizza";
+    if (isPizza) {
+      setBasePizza(p);
+      setPizzaPreset({
+        size: itemFromCard?.size || "",    // se já veio tamanho
+        firstFlavorId: p.id,              // sabor clicado
+      });
+      setPizzaOpen(true);
+      return;
+    }
+    cart.add({
+      ...itemFromCard,
+      qty: itemFromCard?.qty ?? 1,
+    });
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header
@@ -177,7 +101,6 @@ export default function Cardapio() {
         onSearchChange={setSearch}
       />
 
-      {/* Banner */}
       {config?.bannerUrl && (
         <img
           src={config.bannerUrl}
@@ -191,7 +114,7 @@ export default function Cardapio() {
           <HorarioFuncionamento />
         </div>
 
-        {/* Categorias fixas */}
+        {/* categorias */}
         <div className="sticky top-0 bg-gray-50 z-40 pb-3 mb-4 border-b">
           <div className="flex gap-3 overflow-x-auto scrollbar-hide py-2">
             {categories.map((cat) => (
@@ -212,19 +135,7 @@ export default function Cardapio() {
           </div>
         </div>
 
-        {/* Meio a Meio */}
-        {activeCategory === "Pizza" && (
-          <div className="mt-2 mb-6 flex justify-center">
-            <button
-              onClick={() => setMeioMeioOpen(true)}
-              className="px-5 py-2 bg-yellow-500 text-white rounded-xl shadow hover:bg-yellow-600"
-            >
-              🍕 Pedir Pizza Meio a Meio
-            </button>
-          </div>
-        )}
-
-        {/* Produtos agrupados */}
+        {/* produtos */}
         <div className="w-full max-w-6xl mx-auto space-y-10">
           {Object.keys(groupedProducts).length > 0 ? (
             Object.entries(groupedProducts).map(([sub, items]) => (
@@ -234,7 +145,11 @@ export default function Cardapio() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                   {items.map((p) => (
-                    <ProductCard key={p.id} p={p} onAdd={cart.add} />
+                    <ProductCard
+                      key={p.id}
+                      p={p}
+                      onAdd={makeOnAdd(p)}
+                    />
                   ))}
                 </div>
               </div>
@@ -261,19 +176,24 @@ export default function Cardapio() {
         whatsapp={config?.whatsapp}
       />
 
-      <MeioMeioModal
-        open={meioMeioOpen}
-        onClose={() => setMeioMeioOpen(false)}
+      {/* 🔹 wizard unificado da pizza */}
+      <PizzaBuilderModal
+        open={pizzaOpen}
+        onClose={() => {
+          setPizzaOpen(false);
+          setBasePizza(null);
+          setPizzaPreset(null);
+        }}
         products={products}
-        onAdd={cart.add}
+        baseProduct={basePizza}
+        preset={pizzaPreset}  // 👈 agora leva o preset para o modal
+        onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
       />
 
-      {/* Rodapé */}
       <p className="text-center text-gray-500 mt-6">
         Imagens meramente ilustrativas
       </p>
 
-      {/* 🔹 Instagram configurável */}
       {config?.instagram && (
         <div
           className="flex justify-center mt-4 mb-6"

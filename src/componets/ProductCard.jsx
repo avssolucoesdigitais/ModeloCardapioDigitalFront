@@ -5,17 +5,30 @@ import { motion } from "framer-motion";
 export default function ProductCard({ p, onAdd }) {
   const [selectedSize, setSelectedSize] = useState("");
 
+  // lista de tamanhos válidos
   const sizes = p.prices ? Object.entries(p.prices).filter(([v]) => v) : [];
 
   const handleAdd = () => {
+    // se tem tamanhos, mas não foi escolhido, trava
     if (sizes.length > 0 && !selectedSize) {
       alert("Selecione um tamanho antes de adicionar ao carrinho!");
       return;
     }
 
+    // preço base
     const price =
       sizes.length > 0 ? p.prices[selectedSize] : p.prices?.promocao || 0;
 
+    // 🔹 se for pizza, só abre o wizard passando size + id
+    if (p.category?.toLowerCase() === "pizza") {
+      onAdd({
+        id: p.id,
+        size: selectedSize,
+      });
+      return;
+    }
+
+    // 🔹 senão, adiciona direto ao carrinho
     onAdd({
       id: p.id,
       name: p.name,
@@ -24,13 +37,14 @@ export default function ProductCard({ p, onAdd }) {
       price,
       size: selectedSize || "único",
       image: p.image,
+      qty: 1,
     });
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}   // começa invisível e deslocado
-      animate={{ opacity: 1, y: 0 }}    // aparece suavemente
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       whileHover={{ scale: 1.02, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
       whileTap={{ scale: 0.97 }}
@@ -73,7 +87,7 @@ export default function ProductCard({ p, onAdd }) {
         </motion.button>
       </div>
 
-      {/* Imagem animada */}
+      {/* Imagem */}
       {p.image && (
         <motion.img
           src={p.image}

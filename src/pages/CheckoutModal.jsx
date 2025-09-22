@@ -46,101 +46,150 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
     );
   }
 
- const handleConfirmar = async () => {
-  if (!nome.trim()) return alert("Digite seu nome.");
-  if (!phone.trim()) return alert("Digite seu WhatsApp.");
-  if (entrega === "entrega" && (!bairro || !rua.trim() || !numero.trim())) {
-    return alert("Preencha corretamente seu endereço.");
-  }
-  if (itensCarrinho.length === 0) return alert("Seu carrinho está vazio.");
-
-  setLoading(true);
-  try {
-    const enderecoFinal =
-      entrega === "entrega"
-        ? `${rua}, ${numero} - ${bairro} (Ref: ${referencia || "—"})`
-        : "RETIRADA NA LOJA";
-
-    const orderNumber = Date.now().toString().slice(-6);
-
-    await addDoc(collection(db, "orders"), {
-      orderNumber,
-      customer: nome,
-      phone,
-      address: enderecoFinal,
-      bairro,
-      reference: referencia,
-      paymentMethod: pagamento,
-      deliveryType: entrega,
-      items: itensCarrinho,
-      subtotal,
-      taxaEntrega,
-      total,
-      observacao,
-      status: "PENDENTE",
-      createdAt: new Date().toISOString(),
-    });
-
-    // 🔹 Aqui corrigi o cabeçalho
-    let msg = `🛒 Novo Pedido%0A`;
-    msg += `👤 Cliente: ${nome}%0A`;
-    msg += `📱 WhatsApp: ${phone}%0A`;
-
-    if (entrega === "entrega") {
-      msg += `🏠 Endereço: ${rua}, ${numero}%0A`;
-      msg += `📍 Bairro: ${bairro}%0A`;
-      if (referencia) msg += `📝 Ref: ${referencia}%0A`;
-    } else {
-      msg += `📍 Retirada na loja%0A`;
+  const handleConfirmar = async () => {
+    if (!nome.trim()) return alert("Digite seu nome.");
+    if (!phone.trim()) return alert("Digite seu WhatsApp.");
+    if (entrega === "entrega" && (!bairro || !rua.trim() || !numero.trim())) {
+      return alert("Preencha corretamente seu endereço.");
     }
+    if (itensCarrinho.length === 0) return alert("Seu carrinho está vazio.");
 
-    msg += `💳 Pagamento: ${pagamento.toUpperCase()}%0A`;
-    msg += `🚚 Forma: ${entrega === "entrega" ? "Entrega" : "Retirada"}%0A`;
+    setLoading(true);
+    try {
+      const enderecoFinal =
+        entrega === "entrega"
+          ? `${rua}, ${numero} - ${bairro} (Ref: ${referencia || "—"})`
+          : "RETIRADA NA LOJA";
 
-    if (observacao.trim()) {
-      msg += `📝 Observações: ${observacao}%0A`;
-    }
+      const orderNumber = Date.now().toString().slice(-6);
 
-    msg += `%0AItens:%0A`;
-    itensCarrinho.forEach((item) => {
-      const qty = item?.qty ?? 0;
-      const name = item?.name ?? "—";
-      const size = item?.size ? `(${item.size})` : "";
-      const price = Number(item?.price ?? 0).toFixed(2);
+      await addDoc(collection(db, "orders"), {
+        orderNumber,
+        customer: nome,
+        phone,
+        address: enderecoFinal,
+        bairro,
+        reference: referencia,
+        paymentMethod: pagamento,
+        deliveryType: entrega,
+        items: itensCarrinho,
+        subtotal,
+        taxaEntrega,
+        total,
+        observacao,
+        status: "PENDENTE",
+        createdAt: new Date().toISOString(),
+      });
 
-      let desc = `${qty}x ${name} ${size}`;
-      if (Array.isArray(item.flavors) && item.flavors.length > 0) {
-        desc += ` [${item.flavors.join(" + ")}]`;
+      // 🔹 Mensagem do WhatsApp
+      let msg = `🛒 *Novo Pedido*%0A`;
+      msg += `👤 Cliente: ${nome}%0A`;
+      msg += `📱 WhatsApp: ${phone}%0A`;
+
+      if (entrega === "entrega") {
+        msg += `🏠 Endereço: ${rua}, ${numero}%0A`;
+        msg += `📍 Bairro: ${bairro}%0A`;
+        if (referencia) msg += `📝 Ref: ${referencia}%0A`;
+      } else {
+        msg += `📍 Retirada na loja%0A`;
       }
-      msg += `- ${desc} (R$ ${price})%0A`;
-    });
 
-    msg += `%0A💰 Subtotal: R$ ${subtotal.toFixed(2)}%0A`;
-    if (entrega === "entrega") {
-      msg += `🚚 Taxa de entrega: R$ ${taxaEntrega.toFixed(2)}%0A`;
+      msg += `💳 Pagamento: ${pagamento.toUpperCase()}%0A`;
+      msg += `🚚 Forma: ${entrega === "entrega" ? "Entrega" : "Retirada"}%0A`;
+
+      if (observacao.trim()) {
+        msg += `📝 Observações: ${observacao}%0A`;
+      }
+
+      msg += `%0A*Itens:*%0A`;
+      itensCarrinho.forEach((item) => {
+        const qty = item?.qty ?? 0;
+        const size = item?.size ? `(${item.size})` : "";
+        const unitPrice = Number(item?.price ?? 0).toFixed(2);
+
+        msg += `- ${qty}x ${item.name} ${size}%0A`;
+
+        // Sabores (meio a meio ou único)
+        if (Array.isArray(item.flavors) && item.flavors.length > 0) {
+          msg += `   Sabores: ${item.flavors.join(" + ")}%0A`;
+        }
+
+        // Borda
+        if (item.crust) {
+          msg += `   Borda: ${item.crust.nome}`;
+          if (item.crust.preco > 0) msg += ` (+R$ ${item.crust.preco})`;
+          msg += `%0A`;
+        }
+
+        // Adicionais
+        if (Array.isArray(item.addons) && item.addons.length > 0) {
+          msg += `   Adicionais: ${item.addons
+            .map((a) => `${a.nome} (+R$ ${a.preco})`)
+            .join(", ")}%0A`;
+        }
+
+        msg += `   Preço unitário: R$ ${unitPrice}%0A`;
+      });
+
+      msg += `%0A💰 Subtotal: R$ ${subtotal.toFixed(2)}%0A`;
+      if (entrega === "entrega") {
+        msg += `🚚 Taxa de entrega: R$ ${taxaEntrega.toFixed(2)}%0A`;
+      }
+      msg += `✅ Total: R$ ${total.toFixed(2)}`;
+
+      let adminPhone = "558999999999";
+      if (typeof whatsapp === "string" && whatsapp.trim()) {
+        adminPhone = whatsapp.startsWith("55") ? whatsapp : `55${whatsapp}`;
+      }
+
+      const url = `https://wa.me/${adminPhone}?text=${msg}`;
+      window.location.href = url;
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao processar o pedido.");
+    } finally {
+      setLoading(false);
     }
-    msg += `✅ Total: R$ ${total.toFixed(2)}`;
+  };
 
-    let adminPhone = "558999999999";
-    if (typeof whatsapp === "string" && whatsapp.trim()) {
-      adminPhone = whatsapp.startsWith("55") ? whatsapp : `55${whatsapp}`;
-    }
-
-    const url = `https://wa.me/${adminPhone}?text=${msg}`;
-    window.location.href = url;
-  } catch (e) {
-    console.error(e);
-    alert("Erro ao processar o pedido.");
-  } finally {
-    setLoading(false);
-  }
-};
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
         <h2 className="text-xl font-bold mb-4">Finalizar Pedido</h2>
 
-        {/* Resumo */}
+        {/* Resumo dos itens */}
+        <div className="mb-4 space-y-2">
+          {itensCarrinho.map((item, idx) => (
+            <div key={idx} className="border rounded p-2 text-sm">
+              <strong>{item.qty}x {item.name}</strong> {item.size && `(${item.size})`}<br />
+
+              {/* Sabores */}
+              {item.flavors?.length > 0 && (
+                <div>🍕 Sabores: {item.flavors.join(" + ")}</div>
+              )}
+
+              {/* Borda */}
+              {item.crust && (
+                <div>
+                  🌟 Borda: {item.crust.nome}{" "}
+                  {item.crust.preco > 0 ? `(R$ ${item.crust.preco})` : "(Grátis)"}
+                </div>
+              )}
+
+              {/* Adicionais */}
+              {item.addons?.length > 0 && (
+                <div>
+                  ➕ Adicionais:{" "}
+                  {item.addons.map((a) => `${a.nome} (R$ ${a.preco})`).join(", ")}
+                </div>
+              )}
+
+              <div>💵 Preço unitário: R$ {Number(item.price).toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Totais */}
         <div className="text-sm text-gray-600 mb-3">
           <div>Subtotal: R$ {subtotal.toFixed(2)}</div>
           <div>Taxa de entrega: R$ {taxaEntrega.toFixed(2)}</div>
@@ -281,3 +330,4 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
     </div>
   );
 }
+
