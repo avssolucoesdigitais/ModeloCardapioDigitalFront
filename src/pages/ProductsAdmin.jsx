@@ -10,6 +10,28 @@ import {
 } from "firebase/firestore";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
+// Função para upload no Cloudinary
+async function uploadToCloudinary(file) {
+  const cloudName = "dze5gi1ft"; // seu cloud_name
+  const uploadPreset = "uhadthkk"; // 🔹 preset NÃO-ASSINADO
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || "Erro no upload");
+  return data.secure_url;
+}
+
 export default function ProductsAdmin() {
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState({
@@ -18,9 +40,9 @@ export default function ProductsAdmin() {
     category: "",
     image: "",
     prices: {},
-    sizes: [], // lista de tamanhos personalizados
+    sizes: [],
   });
-  const [newSize, setNewSize] = useState(""); // tamanho que o admin digita
+  const [newSize, setNewSize] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -117,17 +139,15 @@ export default function ProductsAdmin() {
     setForm({ ...form, sizes: newSizes, prices: newPrices });
   };
 
-  // função para reordenar produtos via drag-and-drop
+  // reordenar produtos via drag-and-drop
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
     const reordered = Array.from(products);
     const [removed] = reordered.splice(result.source.index, 1);
     reordered.splice(result.destination.index, 0, removed);
 
-    // Atualiza ordem local
     setProducts(reordered);
 
-    // Atualiza ordem no Firestore
     await Promise.all(
       reordered.map((p, idx) =>
         updateDoc(doc(db, "products", p.id), { ordem: idx + 1 })
@@ -228,13 +248,27 @@ export default function ProductsAdmin() {
           </div>
         </div>
 
-        <input
-          type="text"
-          placeholder="URL da Imagem"
-          value={form.image}
-          onChange={(e) => setForm({ ...form, image: e.target.value })}
-          className="w-full border rounded-lg px-3 py-2 mt-4"
-        />
+        {/* Upload da imagem */}
+        <div className="mt-4">
+          <label className="block font-semibold mb-1">Imagem do Produto:</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              const url = await uploadToCloudinary(file);
+              setForm({ ...form, image: url });
+            }}
+          />
+          {form.image && (
+            <img
+              src={form.image}
+              alt="Preview"
+              className="w-24 h-24 object-cover mt-2 rounded border"
+            />
+          )}
+        </div>
 
         <button
           onClick={handleSaveProduct}
@@ -273,7 +307,6 @@ export default function ProductsAdmin() {
                         {...provided.dragHandleProps}
                         className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border rounded-lg bg-[#F5F6FA] hover:shadow"
                       >
-                        {/* Info produto */}
                         <div className="flex items-center gap-4">
                           {p.image && (
                             <img
@@ -286,7 +319,9 @@ export default function ProductsAdmin() {
                             <h3 className="font-semibold text-[#0C2340]">
                               {p.name}
                             </h3>
-                            <p className="text-sm text-gray-600">{p.category}</p>
+                            <p className="text-sm text-gray-600">
+                              {p.category}
+                            </p>
                             <p className="text-xs text-gray-500">
                               {p.description}
                             </p>
@@ -299,7 +334,6 @@ export default function ProductsAdmin() {
                           </div>
                         </div>
 
-                        {/* Ações */}
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleEditProduct(p)}
@@ -315,7 +349,10 @@ export default function ProductsAdmin() {
                           </button>
                           <button
                             onClick={() =>
-                              toggleAvailability(p.id, !(p.available !== false))
+                              toggleAvailability(
+                                p.id,
+                                !(p.available !== false)
+                              )
                             }
                             className={`px-3 py-1 rounded-lg text-sm ${
                               p.available !== false

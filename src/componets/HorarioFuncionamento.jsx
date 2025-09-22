@@ -2,16 +2,16 @@ import { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-// Dias usados no AdminPanel
-const DIAS_KEYS = ["domingo","segunda","terca","quarta","quinta","sexta","sabado"];
+// Dias com labels corretos
+const DIAS_KEYS = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 const DIAS_LABEL = {
-  domingo: "domingo",
-  segunda: "segunda",
-  terca: "terça",
-  quarta: "quarta",
-  quinta: "quinta",
-  sexta: "sexta",
-  sabado: "sábado",
+  domingo: "Domingo",
+  segunda: "Segunda-feira",
+  terca: "Terça-feira",
+  quarta: "Quarta-feira",
+  quinta: "Quinta-feira",
+  sexta: "Sexta-feira",
+  sabado: "Sábado",
 };
 
 function toMin(hhmm) {
@@ -42,28 +42,65 @@ function getStatus(horarios) {
   const pOpen = prev?.abre ? toMin(prev.abre) : null;
   const pClose = prev?.fecha ? toMin(prev.fecha) : null;
 
-  // Aberto herdado da noite anterior
+  let extraMsg = "";
+
+  /// === CASO HOJE NÃO TENHA HORÁRIO CONFIGURADO ===
+if (tOpen == null || tClose == null) {
+  for (let i = 1; i <= 7; i++) {
+    const idx = (weekday + i) % 7;
+    const k = DIAS_KEYS[idx];
+    const h = horarios?.[k];
+    if (h?.abre && h?.fecha) {
+      extraMsg = `Hoje não teremos atividades. Retornaremos ${DIAS_LABEL[k]} às ${h.abre}.`;
+      break;
+    }
+  }
+  return { open: false, labelHoje: DIAS_LABEL[keyToday], hojeAbre: null, hojeFecha: null, extraMsg };
+}
+
+  // === CASO HOJE TENHA HORÁRIO ===
+
+  // 1. Aberto herdado da noite anterior
   if (pOpen != null && pClose != null && pClose <= pOpen) {
     if (minutes < pClose) {
       return { open: true, labelHoje: DIAS_LABEL[keyPrev], hojeAbre: prev.abre, hojeFecha: prev.fecha };
     }
   }
 
-  // Janela normal de hoje
-  if (tOpen != null && tClose != null) {
-    if (tClose > tOpen) {
-      if (minutes >= tOpen && minutes < tClose) {
-        return { open: true, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha };
+  // 2. Janela normal de hoje
+  if (tClose > tOpen) {
+    // Exemplo: 18:00 às 23:00
+    if (minutes >= tOpen && minutes < tClose) {
+      if (tClose - minutes <= 30) {
+        extraMsg = "⚠️ Logo mais encerraremos nossas atividades.";
       }
-    } else {
-      // Janela virando a meia-noite
-      if (minutes >= tOpen || minutes < tClose) {
-        return { open: true, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha };
+      return { open: true, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
+    } else if (minutes < tOpen) {
+      // Ainda vai abrir hoje
+      if (tOpen - minutes <= 30) {
+        extraMsg = "⏳ Logo mais iniciaremos nossas atividades.";
       }
+      return { open: false, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
+    }
+  } else {
+    // Exemplo: 18:00 às 02:00 (vira a meia-noite)
+    if (minutes >= tOpen || minutes < tClose) {
+      if (
+        (minutes >= tOpen && 1440 - minutes + tClose <= 30) ||
+        (minutes < tClose && tClose - minutes <= 30)
+      ) {
+        extraMsg = "⚠️ Logo mais encerraremos nossas atividades.";
+      }
+      return { open: true, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
+    } else if (minutes < tOpen) {
+      if (tOpen - minutes <= 30) {
+        extraMsg = "⏳ Logo mais iniciaremos nossas atividades.";
+      }
+      return { open: false, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
     }
   }
 
-  // Fechado → achar próximo dia aberto
+  // 3. Já passou o horário de hoje → próximo dia
   for (let i = 1; i <= 7; i++) {
     const idx = (weekday + i) % 7;
     const k = DIAS_KEYS[idx];
@@ -81,25 +118,26 @@ function getStatus(horarios) {
     }
   }
 
-  return { open: false, labelHoje: DIAS_LABEL[keyToday] };
+  return { open: false, labelHoje: DIAS_LABEL[keyToday], extraMsg };
 }
 
-export default function HorarioFuncionamento() {
+export default function HorarioFuncionamento({ lojaId = "daypizza" }) {
   const [horarios, setHorarios] = useState(null);
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const snap = await getDoc(doc(db, "config", "funcionamento"));
+        const snap = await getDoc(doc(db, "lojas", lojaId, "config", "principal"));
         if (snap.exists()) {
-          setHorarios(snap.data().horarios || {});
+          const data = snap.data();
+          setHorarios(data.horarios || {});
         }
       } catch (err) {
         console.error("Erro ao buscar horários:", err);
       }
     })();
-  }, []);
+  }, [lojaId]);
 
   useEffect(() => {
     if (!horarios) return;
@@ -118,14 +156,12 @@ export default function HorarioFuncionamento() {
       ? `${status.hojeAbre} às ${status.hojeFecha}`
       : "Fechado hoje";
 
-  let msgExtra = "";
-  if (!aberto) {
+  let msgExtra = status.extraMsg || "";
+  if (!aberto && !msgExtra) {
     if (status.nextDayOffset === 1) {
       msgExtra = `Amanhã estaremos de volta às ${status.nextOpenTime}.`;
     } else if (status.nextDayOffset > 1) {
       msgExtra = `Voltamos ${status.nextDayLabel} às ${status.nextOpenTime}.`;
-    } else {
-      msgExtra = "Voltaremos em breve.";
     }
   }
 
@@ -139,7 +175,7 @@ export default function HorarioFuncionamento() {
         <div>
           <strong>Hoje ({status.labelHoje}):</strong> {hojeTexto}
         </div>
-        {!aberto && <div className="mt-1">{msgExtra}</div>}
+        {msgExtra && <div className="mt-1">{msgExtra}</div>}
       </div>
     </div>
   );

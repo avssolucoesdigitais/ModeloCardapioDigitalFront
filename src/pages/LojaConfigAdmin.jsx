@@ -4,6 +4,39 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import useAuth from "../hooks/useAuth";
 import toast from "react-hot-toast";
 
+// Ordem fixa com labels
+const DIAS_ORDENADOS = [
+  { key: "domingo", label: "Domingo" },
+  { key: "segunda", label: "Segunda-feira" },
+  { key: "terca", label: "Terça-feira" },
+  { key: "quarta", label: "Quarta-feira" },
+  { key: "quinta", label: "Quinta-feira" },
+  { key: "sexta", label: "Sexta-feira" },
+  { key: "sabado", label: "Sábado" },
+];
+
+// Função para upload no Cloudinary
+async function uploadToCloudinary(file) {
+  const cloudName = "dze5gi1ft"; // 🔹 seu cloud_name
+  const uploadPreset = "uhadthkk"; // 🔹 seu preset não-assinado
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || "Erro no upload");
+  return data.secure_url;
+}
+
 export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   const { user, loading } = useAuth();
 
@@ -16,6 +49,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     primaryColor: "#009DFF",
     secondaryColor: "#0C2340",
     whatsapp: "",
+    instagram: "", // 🔹 novo campo
     bairros: [],
     horarios: {
       domingo: { abre: "", fecha: "" },
@@ -47,6 +81,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   const saveConfig = async () => {
     try {
       setSaving(true);
+
       const ref = doc(db, "lojas", lojaId, "config", "principal");
       await setDoc(ref, config, { merge: true });
       toast.success("✅ Configuração da loja salva!");
@@ -127,20 +162,60 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
             className="border p-2 rounded w-full"
           />
+
+          {/* Instagram */}
           <input
             type="text"
-            placeholder="URL da Logo"
-            value={config.logoUrl}
-            onChange={(e) => setConfig({ ...config, logoUrl: e.target.value })}
+            placeholder="Link do Instagram (ex: https://instagram.com/daypizza)"
+            value={config.instagram}
+            onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
             className="border p-2 rounded w-full"
           />
-          <input
-            type="text"
-            placeholder="URL do Banner"
-            value={config.bannerUrl}
-            onChange={(e) => setConfig({ ...config, bannerUrl: e.target.value })}
-            className="border p-2 rounded w-full"
-          />
+
+          {/* Upload da Logo */}
+          <div>
+            <label className="block font-semibold mb-1">Logo:</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const url = await uploadToCloudinary(file);
+                setConfig({ ...config, logoUrl: url });
+              }}
+            />
+            {config.logoUrl && (
+              <img
+                src={config.logoUrl}
+                alt="Logo"
+                className="h-16 mt-2 rounded border"
+              />
+            )}
+          </div>
+
+          {/* Upload do Banner */}
+          <div>
+            <label className="block font-semibold mb-1">Banner:</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const url = await uploadToCloudinary(file);
+                setConfig({ ...config, bannerUrl: url });
+              }}
+            />
+            {config.bannerUrl && (
+              <img
+                src={config.bannerUrl}
+                alt="Banner"
+                className="h-24 mt-2 rounded border"
+              />
+            )}
+          </div>
+
           <div className="flex gap-4">
             <label className="flex items-center gap-2">
               Cor primária:
@@ -227,19 +302,19 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       {activeTab === "horarios" && (
         <section className="bg-white rounded-xl shadow p-6 border">
           <div className="grid gap-2">
-            {Object.keys(config.horarios).map((dia) => (
-              <div key={dia} className="flex items-center gap-2">
-                <span className="capitalize w-24">{dia}:</span>
+            {DIAS_ORDENADOS.map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="w-32">{label}:</span>
                 <input
                   type="time"
-                  value={config.horarios[dia]?.abre || ""}
+                  value={config.horarios[key]?.abre || ""}
                   onChange={(e) =>
                     setConfig({
                       ...config,
                       horarios: {
                         ...config.horarios,
-                        [dia]: {
-                          ...config.horarios[dia],
+                        [key]: {
+                          ...config.horarios[key],
                           abre: e.target.value,
                         },
                       },
@@ -250,14 +325,14 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
                 <span>às</span>
                 <input
                   type="time"
-                  value={config.horarios[dia]?.fecha || ""}
+                  value={config.horarios[key]?.fecha || ""}
                   onChange={(e) =>
                     setConfig({
                       ...config,
                       horarios: {
                         ...config.horarios,
-                        [dia]: {
-                          ...config.horarios[dia],
+                        [key]: {
+                          ...config.horarios[key],
                           fecha: e.target.value,
                         },
                       },

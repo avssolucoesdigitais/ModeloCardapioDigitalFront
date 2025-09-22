@@ -258,7 +258,7 @@ export default function Cardapio() {
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         cart={cart}
-        whatsapp={config?.whatsapp}   // ✅ agora usa o mesmo número configurado no admin
+        whatsapp={config?.whatsapp}
       />
 
       <MeioMeioModal
@@ -272,19 +272,31 @@ export default function Cardapio() {
       <p className="text-center text-gray-500 mt-6">
         Imagens meramente ilustrativas
       </p>
+
+      {/* 🔹 Instagram configurável */}
       {config?.instagram && (
-        <div className="flex justify-center mt-4 mb-6">
+        <div
+          className="flex justify-center mt-4 mb-6"
+          style={{
+            backgroundColor: config.primaryColor,
+            color: config.secondaryColor,
+            padding: "10px",
+            borderRadius: "8px",
+          }}
+        >
           <a
             href={config.instagram}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-black hover:text-red-700 text-lg font-semibold"
+            className="flex items-center gap-2 text-lg font-semibold"
+            style={{ color: config.secondaryColor }}
           >
             <FaInstagram size={28} />
             Siga a {config.nomeLoja || "nossa loja"} no Instagram
           </a>
         </div>
       )}
+
       <Footer />
     </div>
   );
