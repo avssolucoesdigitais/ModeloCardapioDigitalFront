@@ -28,7 +28,7 @@ export default function AdminLayout() {
     <div className="min-h-screen flex bg-[#F5F6FA]">
       {/* Botão menu mobile */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-[#0C2340] text-white rounded-lg shadow"
+        className="md:hidden fixed top-4 left- z-50 p-2 bg-[#0C2340] text-white rounded-lg shadow"
         onClick={() => setSidebarOpen(!sidebarOpen)}
       >
         {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
