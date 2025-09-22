@@ -46,7 +46,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     primaryColor: "#009DFF",
     secondaryColor: "#0C2340",
     whatsapp: "",
-    instagram: "", // 🔹 novo campo
+    instagram: "",
     bairros: [],
     horarios: {
       domingo: { abre: "", fecha: "" },
@@ -168,6 +168,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
 
           {/* Uploads em grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Logo */}
             <div>
               <label className="block font-semibold mb-1">Logo:</label>
               <input
@@ -181,10 +182,19 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
                 }}
               />
               {config.logoUrl && (
-                <img src={config.logoUrl} alt="Logo" className="h-16 mt-2 rounded border" />
+                <div className="mt-2 flex items-center gap-3">
+                  <img src={config.logoUrl} alt="Logo" className="h-16 rounded border" />
+                  <button
+                    onClick={() => setConfig({ ...config, logoUrl: "" })}
+                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                  >
+                    Remover
+                  </button>
+                </div>
               )}
             </div>
 
+            {/* Banner */}
             <div>
               <label className="block font-semibold mb-1">Banner:</label>
               <input
@@ -198,7 +208,15 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
                 }}
               />
               {config.bannerUrl && (
-                <img src={config.bannerUrl} alt="Banner" className="h-24 mt-2 rounded border" />
+                <div className="mt-2 flex items-center gap-3">
+                  <img src={config.bannerUrl} alt="Banner" className="h-24 rounded border" />
+                  <button
+                    onClick={() => setConfig({ ...config, bannerUrl: "" })}
+                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                  >
+                    Remover
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -288,47 +306,47 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       {/* Aba Horários */}
       {activeTab === "horarios" && (
         <section className="bg-white rounded-xl shadow p-6 border">
-        <div className="grid gap-4">
-  {DIAS_ORDENADOS.map(({ key, label }) => (
-    <div
-      key={key}
-      className="flex flex-col sm:flex-row sm:items-center sm:gap-3 border-b pb-3"
-    >
-      <span className="w-32 font-medium">{label}:</span>
-      <div className="flex gap-2 mt-2 sm:mt-0 w-full">
-        <input
-          type="time"
-          value={config.horarios[key]?.abre || ""}
-          onChange={(e) =>
-            setConfig({
-              ...config,
-              horarios: {
-                ...config.horarios,
-                [key]: { ...config.horarios[key], abre: e.target.value },
-              },
-            })
-          }
-          className="flex-1 border p-2 rounded"
-        />
-        <span className="flex items-center">às</span>
-        <input
-          type="time"
-          value={config.horarios[key]?.fecha || ""}
-          onChange={(e) =>
-            setConfig({
-              ...config,
-              horarios: {
-                ...config.horarios,
-                [key]: { ...config.horarios[key], fecha: e.target.value },
-              },
-            })
-          }
-          className="flex-1 border p-2 rounded"
-        />
-      </div>
-    </div>
-  ))}
-</div>
+          <div className="grid gap-4">
+            {DIAS_ORDENADOS.map(({ key, label }) => (
+              <div
+                key={key}
+                className="flex flex-col sm:flex-row sm:items-center sm:gap-3 border-b pb-3"
+              >
+                <span className="w-32 font-medium">{label}:</span>
+                <div className="flex gap-2 mt-2 sm:mt-0 w-full">
+                  <input
+                    type="time"
+                    value={config.horarios[key]?.abre || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        horarios: {
+                          ...config.horarios,
+                          [key]: { ...config.horarios[key], abre: e.target.value },
+                        },
+                      })
+                    }
+                    className="flex-1 border p-2 rounded"
+                  />
+                  <span className="flex items-center">às</span>
+                  <input
+                    type="time"
+                    value={config.horarios[key]?.fecha || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        horarios: {
+                          ...config.horarios,
+                          [key]: { ...config.horarios[key], fecha: e.target.value },
+                        },
+                      })
+                    }
+                    className="flex-1 border p-2 rounded"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
 
           <button
             onClick={handleSaveHorarios}
