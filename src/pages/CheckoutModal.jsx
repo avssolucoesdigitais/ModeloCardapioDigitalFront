@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { addDoc, collection } from "firebase/firestore";
+import { useState, useMemo, useEffect } from "react";
+import { addDoc, collection, doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import useLojaConfig from "../hooks/useLojaConfig";
 
@@ -34,6 +34,33 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
   const total = subtotal + taxaEntrega;
 
+  // 🔹 Carregar cadastro do cliente (se já existir no localStorage)
+  useEffect(() => {
+    const savedPhone = localStorage.getItem("userPhone");
+    if (!savedPhone) return;
+
+    const loadUser = async () => {
+      try {
+        const userRef = doc(db, "users", savedPhone);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          setNome(data.nome || "");
+          setPhone(data.telefone || savedPhone);
+          setBairro(data.bairro || "");
+          setRua(data.rua || "");
+          setNumero(data.numero || "");
+          setReferencia(data.referencia || "");
+          setPagamento(data.pagamentoPreferido || "pix");
+        }
+      } catch (err) {
+        console.error("Erro ao carregar cadastro no checkout:", err);
+      }
+    };
+
+    loadUser();
+  }, []);
+
   if (!open) return null;
 
   if (loadingConfig || !config) {
@@ -63,7 +90,26 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
       const orderNumber = Date.now().toString().slice(-6);
 
-      await addDoc(collection(db, "orders"), {
+      // 🔹 Atualiza cadastro do cliente
+      const userRef = doc(db, "users", phone);
+      await setDoc(
+        userRef,
+        {
+          telefone: phone,
+          nome,
+          bairro,
+          rua,
+          numero,
+          referencia,
+          pagamentoPreferido: pagamento,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+      localStorage.setItem("userPhone", phone);
+
+      // 🔹 Salva pedido na coleção global
+      const orderDoc = await addDoc(collection(db, "orders"), {
         orderNumber,
         customer: nome,
         phone,
@@ -81,14 +127,26 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         createdAt: new Date().toISOString(),
       });
 
+      // 🔹 Salva pedido no histórico do cliente
+      await setDoc(
+        doc(db, "users", phone, "pedidos", orderDoc.id),
+        {
+          orderNumber,
+          items: itensCarrinho,
+          total,
+          status: "PENDENTE",
+          createdAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
       // 🔹 Mensagem do WhatsApp
       let msg = `🛒 *Novo Pedido*%0A`;
       msg += `👤 Cliente: ${nome}%0A`;
       msg += `📱 WhatsApp: ${phone}%0A`;
 
       if (entrega === "entrega") {
-        msg += `🏠 Endereço: ${rua}, ${numero}%0A`;
-        msg += `📍 Bairro: ${bairro}%0A`;
+        msg += `🏠 Endereço: ${rua}, ${numero} - ${bairro}%0A`;
         if (referencia) msg += `📝 Ref: ${referencia}%0A`;
       } else {
         msg += `📍 Retirada na loja%0A`;
@@ -109,25 +167,19 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
         msg += `- ${qty}x ${item.name} ${size}%0A`;
 
-        // Sabores (meio a meio ou único)
         if (Array.isArray(item.flavors) && item.flavors.length > 0) {
           msg += `   Sabores: ${item.flavors.join(" + ")}%0A`;
         }
-
-        // Borda
         if (item.crust) {
           msg += `   Borda: ${item.crust.nome}`;
           if (item.crust.preco > 0) msg += ` (+R$ ${item.crust.preco})`;
           msg += `%0A`;
         }
-
-        // Adicionais
         if (Array.isArray(item.addons) && item.addons.length > 0) {
           msg += `   Adicionais: ${item.addons
             .map((a) => `${a.nome} (+R$ ${a.preco})`)
             .join(", ")}%0A`;
         }
-
         msg += `   Preço unitário: R$ ${unitPrice}%0A`;
       });
 
@@ -161,29 +213,23 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         <div className="mb-4 space-y-2">
           {itensCarrinho.map((item, idx) => (
             <div key={idx} className="border rounded p-2 text-sm">
-              <strong>{item.qty}x {item.name}</strong> {item.size && `(${item.size})`}<br />
-
-              {/* Sabores */}
-              {item.flavors?.length > 0 && (
-                <div>🍕 Sabores: {item.flavors.join(" + ")}</div>
-              )}
-
-              {/* Borda */}
+              <strong>
+                {item.qty}x {item.name}
+              </strong>{" "}
+              {item.size && `(${item.size})`}<br />
+              {item.flavors?.length > 0 && <div>🍕 Sabores: {item.flavors.join(" + ")}</div>}
               {item.crust && (
                 <div>
                   🌟 Borda: {item.crust.nome}{" "}
                   {item.crust.preco > 0 ? `(R$ ${item.crust.preco})` : "(Grátis)"}
                 </div>
               )}
-
-              {/* Adicionais */}
               {item.addons?.length > 0 && (
                 <div>
                   ➕ Adicionais:{" "}
                   {item.addons.map((a) => `${a.nome} (R$ ${a.preco})`).join(", ")}
                 </div>
               )}
-
               <div>💵 Preço unitário: R$ {Number(item.price).toFixed(2)}</div>
             </div>
           ))}
@@ -330,4 +376,3 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
     </div>
   );
 }
-

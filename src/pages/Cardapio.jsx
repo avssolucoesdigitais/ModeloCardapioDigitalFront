@@ -1,20 +1,23 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import useCart from "../hooks/useCart";
-import Header from "../componets/Header";
-import Footer from "../componets/Footer";
-import ProductCard from "../componets/ProductCard";
-import CartPanel from "../componets/CartPanel";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import ProductCard from "../components/ProductCard";
+import CartPanel from "../components/CartPanel";
 import CheckoutModal from "./CheckoutModal";
-import HorarioFuncionamento from "../componets/HorarioFuncionamento";
+import HorarioFuncionamento from "../components/HorarioFuncionamento";
 import useLojaConfig from "../hooks/useLojaConfig";
+
+// Ícones
 import { FaInstagram, FaPizzaSlice, FaHamburger, FaCocktail } from "react-icons/fa";
 import { GiFullPizza, GiFrenchFries, GiHotDog, GiSodaCan } from "react-icons/gi";
 import { MdLocalOffer } from "react-icons/md";
 
-// 🔹 usa o novo wizard unificado
-import PizzaBuilderModal from "../componets/PizzaBuilderModal";
+// Modais especiais
+import PizzaBuilderModal from "../components/PizzaBuilderModal";
+import AcaiBuilderModal from "../components/AcaiBuilderModal";
 
 export default function Cardapio() {
   const cart = useCart();
@@ -26,23 +29,44 @@ export default function Cardapio() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Todas");
 
-  // modal de montar pizza
+  // estados para modais
   const [pizzaOpen, setPizzaOpen] = useState(false);
   const [basePizza, setBasePizza] = useState(null);
-  const [pizzaPreset, setPizzaPreset] = useState(null); // 👈 preset (size + sabor)
+  const [pizzaPreset, setPizzaPreset] = useState(null);
 
+  const [acaiOpen, setAcaiOpen] = useState(false);
+
+  // carregar produtos de /lojas/daypizza/opcoes/*
   useEffect(() => {
-    const q = query(collection(db, "products"), orderBy("ordem", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setProducts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    const ref = collection(db, "lojas", "daypizza", "opcoes");
+    const unsubscribe = onSnapshot(ref, (snapshot) => {
+      const arr = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const categoria = data.categoria;
+
+        (data.produtos || []).forEach((p) => {
+          arr.push({
+            ...p,
+            category: categoria,
+            adicionais: data.adicionais || [],
+            bordas: data.bordas || [],
+            bases: data.bases || [],
+            combos: data.combos || [],
+          });
+        });
+      });
+      setProducts(arr);
     });
     return () => unsubscribe();
   }, []);
 
+  // todas as categorias possíveis
   const allCategories = [
     { name: "Promocao", icon: <MdLocalOffer /> },
     { name: "Pizza", icon: <FaPizzaSlice /> },
-    { name: "Sanduiche", icon: <FaHamburger /> },
+    { name: "Acai", icon: "🍧" },
+    { name: "Hamburguer", icon: <FaHamburger /> },
     { name: "Pastel", icon: "🥟" },
     { name: "Batata", icon: <GiFrenchFries /> },
     { name: "HotDog", icon: <GiHotDog /> },
@@ -59,7 +83,7 @@ export default function Cardapio() {
       ? [{ name: "Todas", icon: <GiFullPizza /> }, ...availableCategories]
       : [];
 
-  // agrupar por subcategoria
+  // agrupar produtos
   const groupedProducts = products
     .filter(
       (p) =>
@@ -68,24 +92,34 @@ export default function Cardapio() {
         p.name?.toLowerCase().includes(search.toLowerCase())
     )
     .reduce((acc, p) => {
-      const sub = p.subCategory || "Outros";
-      if (!acc[sub]) acc[sub] = [];
-      acc[sub].push(p);
+      const group =
+        activeCategory === "Todas"
+          ? p.category || "Outros"
+          : p.subCategory || "Outros";
+
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(p);
       return acc;
     }, {});
 
-  // 👉 embrulha o onAdd do ProductCard:
   const makeOnAdd = (p) => (itemFromCard) => {
-    const isPizza = p.category?.toLowerCase() === "pizza";
-    if (isPizza) {
+    const category = p.category?.toLowerCase();
+
+    if (category === "pizza") {
       setBasePizza(p);
       setPizzaPreset({
-        size: itemFromCard?.size || "",    // se já veio tamanho
-        firstFlavorId: p.id,              // sabor clicado
+        size: itemFromCard?.size || "",
+        firstFlavorId: p.id,
       });
       setPizzaOpen(true);
       return;
     }
+
+    if (category === "acai") {
+      setAcaiOpen(true);
+      return;
+    }
+
     cart.add({
       ...itemFromCard,
       qty: itemFromCard?.qty ?? 1,
@@ -138,18 +172,14 @@ export default function Cardapio() {
         {/* produtos */}
         <div className="w-full max-w-6xl mx-auto space-y-10">
           {Object.keys(groupedProducts).length > 0 ? (
-            Object.entries(groupedProducts).map(([sub, items]) => (
-              <div key={sub}>
+            Object.entries(groupedProducts).map(([group, items]) => (
+              <div key={group}>
                 <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-1">
-                  {sub}
+                  {group}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                   {items.map((p) => (
-                    <ProductCard
-                      key={p.id}
-                      p={p}
-                      onAdd={makeOnAdd(p)}
-                    />
+                    <ProductCard key={p.id} p={p} onAdd={makeOnAdd(p)} />
                   ))}
                 </div>
               </div>
@@ -176,7 +206,6 @@ export default function Cardapio() {
         whatsapp={config?.whatsapp}
       />
 
-      {/* 🔹 wizard unificado da pizza */}
       <PizzaBuilderModal
         open={pizzaOpen}
         onClose={() => {
@@ -186,7 +215,14 @@ export default function Cardapio() {
         }}
         products={products}
         baseProduct={basePizza}
-        preset={pizzaPreset}  // 👈 agora leva o preset para o modal
+        preset={pizzaPreset}
+        onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
+      />
+
+      <AcaiBuilderModal
+        open={acaiOpen}
+        onClose={() => setAcaiOpen(false)}
+        lojaId="daypizza"
         onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
       />
 

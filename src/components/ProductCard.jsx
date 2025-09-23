@@ -6,29 +6,29 @@ export default function ProductCard({ p, onAdd }) {
   const [selectedSize, setSelectedSize] = useState("");
 
   // lista de tamanhos válidos
-  const sizes = p.prices ? Object.entries(p.prices).filter(([v]) => v) : [];
+  const sizes =
+    p.prices && Object.keys(p.prices).length > 0
+      ? Object.entries(p.prices).filter(([size]) => size)
+      : [];
+
+  const category = p.category?.toLowerCase();
 
   const handleAdd = () => {
-    // se tem tamanhos, mas não foi escolhido, trava
+    if (category === "pizza" || category === "acai") {
+      // 🔹 dispara o onAdd → abre modal certo
+      onAdd({ id: p.id, size: selectedSize });
+      return;
+    }
+
+    // 🔹 produtos normais
     if (sizes.length > 0 && !selectedSize) {
       alert("Selecione um tamanho antes de adicionar ao carrinho!");
       return;
     }
 
-    // preço base
     const price =
       sizes.length > 0 ? p.prices[selectedSize] : p.prices?.promocao || 0;
 
-    // 🔹 se for pizza, só abre o wizard passando size + id
-    if (p.category?.toLowerCase() === "pizza") {
-      onAdd({
-        id: p.id,
-        size: selectedSize,
-      });
-      return;
-    }
-
-    // 🔹 senão, adiciona direto ao carrinho
     onAdd({
       id: p.id,
       name: p.name,
@@ -53,9 +53,20 @@ export default function ProductCard({ p, onAdd }) {
       {/* Info */}
       <div className="flex-1 pr-4">
         <h3 className="font-semibold text-lg text-gray-800">{p.name}</h3>
-        <p className="text-sm text-gray-600">{p.description}</p>
+        {p.description && (
+          <p className="text-sm text-gray-600">{p.description}</p>
+        )}
 
-        {sizes.length > 0 ? (
+        {/* Renderização dinâmica */}
+        {category === "acai" ? (
+          <p className="mt-2 text-purple-600 font-bold text-lg">
+            Monte seu Açaí 🍧
+          </p>
+        ) : category === "pizza" ? (
+          <p className="mt-2 text-red-600 font-bold text-lg">
+            Escolha os sabores 🍕
+          </p>
+        ) : sizes.length > 0 ? (
           <div className="flex gap-2 mt-2 flex-wrap">
             {sizes.map(([size, price]) => (
               <motion.button
@@ -78,12 +89,25 @@ export default function ProductCard({ p, onAdd }) {
           </p>
         )}
 
+        {/* Botão principal */}
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={handleAdd}
-          className="mt-3 flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm shadow"
+          className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-sm shadow
+            ${
+              category === "acai"
+                ? "bg-purple-600 hover:bg-purple-700 text-white"
+                : category === "pizza"
+                ? "bg-red-600 hover:bg-red-700 text-white"
+                : "bg-green-600 hover:bg-green-700 text-white"
+            }`}
         >
-          <FaPlus /> Adicionar
+          <FaPlus />{" "}
+          {category === "acai"
+            ? "Montar Açaí"
+            : category === "pizza"
+            ? "Montar Pizza"
+            : "Adicionar"}
         </motion.button>
       </div>
 

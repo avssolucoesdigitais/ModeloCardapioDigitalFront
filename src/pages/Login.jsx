@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "/src/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import Footer from "../componets/Footer";
+import Footer from "../components/Footer";
 import logo from "../assets/logo.png";
 import fundo from "../assets/fundo2l.png";
 

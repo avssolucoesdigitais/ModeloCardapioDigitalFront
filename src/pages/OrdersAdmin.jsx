@@ -67,7 +67,7 @@ export default function OrdersAdmin() {
     }
   };
 
-  // 🔹 Recibo da Cozinha
+  // 🔹 Recibo da Cozinha (somente itens + observações grandes)
   const printOrderKitchen = (pedido) => {
     const numeroPedido = pedido.orderNumber || pedido.id.slice(-4).toUpperCase();
 
@@ -83,21 +83,24 @@ export default function OrdersAdmin() {
           "";
 
         return `
-        <tr>
-          <td>${item.qty || 1}x</td>
-          <td>
-            ${item.name} ${item.size ? `(${item.size})` : ""}
-            ${item.flavors ? `<br/>🍕 Sabores: ${item.flavors.join(" / ")}` : ""}
-            ${item.crust ? `<br/>🍞 Borda: ${item.crust.nome} (R$ ${item.crust.preco || 0})` : ""}
+          <div style="margin-bottom:18px; border-bottom:1px dashed #000; padding-bottom:8px;">
+            <p style="font-size:22px; font-weight:bold;">
+              ${item.qty || 1}x ${item.name} ${item.size ? `(${item.size})` : ""}
+            </p>
+            ${item.flavors ? `<p style="font-size:18px;">🍕 Sabores: ${item.flavors.join(" / ")}</p>` : ""}
+            ${item.crust ? `<p style="font-size:18px;">🍞 Borda: ${item.crust.nome}</p>` : ""}
             ${
               item.addons?.length
-                ? `<br/>➕ Adicionais: ${item.addons.map((a) => a.nome).join(", ")}`
+                ? `<p style="font-size:18px;">➕ Adicionais: ${item.addons.map((a) => a.nome).join(", ")}</p>`
                 : ""
             }
-          </td>
-          <td style="font-size:14px;color:red;">${observacao}</td>
-        </tr>
-      `;
+            ${
+              observacao
+                ? `<p style="font-size:24px; font-weight:bold; color:red;">📝 ${observacao}</p>`
+                : ""
+            }
+          </div>
+        `;
       })
       .join("");
 
@@ -107,26 +110,12 @@ export default function OrdersAdmin() {
           <title>Cozinha - Pedido #${numeroPedido}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
-            h1 { font-size: 26px; margin-bottom: 15px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { padding: 8px; border-bottom: 1px solid #ccc; font-size: 20px; }
-            th { text-align: left; }
+            h1 { font-size: 28px; text-align: center; margin-bottom: 20px; }
           </style>
         </head>
         <body>
-          <h1>👨‍🍳 Cozinha - Pedido #${numeroPedido}</h1>
-          <table>
-            <thead>
-              <tr>
-                <th>Qtd</th>
-                <th>Produto</th>
-                <th>Obs</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itensHTML || "<tr><td colspan='3'>Nenhum item</td></tr>"}
-            </tbody>
-          </table>
+          <h1>👨‍🍳 COZINHA - PEDIDO #${numeroPedido}</h1>
+          ${itensHTML || "<p>Nenhum item</p>"}
         </body>
       </html>
     `;
@@ -137,7 +126,7 @@ export default function OrdersAdmin() {
     janela.print();
   };
 
-  // 🔹 Recibo do Entregador
+  // 🔹 Recibo do Entregador (cupom fiscal estilizado)
   const printOrderDelivery = (pedido) => {
     const numeroPedido = pedido.orderNumber || pedido.id.slice(-4).toUpperCase();
 
@@ -151,28 +140,18 @@ export default function OrdersAdmin() {
           "";
 
         return `
-        <tr>
-          <td>${item.qty || 1}x</td>
-          <td>
-            ${item.name} ${item.size ? `(${item.size})` : ""}
-            ${item.flavors ? `<br/>🍕 Sabores: ${item.flavors.join(" / ")}` : ""}
-            ${item.crust ? `<br/>🍞 Borda: ${item.crust.nome} (R$ ${item.crust.preco || 0})` : ""}
-            ${
-              item.addons?.length
-                ? `<br/>➕ Adicionais: ${item.addons.map((a) => a.nome).join(", ")}`
-                : ""
-            }
-            ${
-              observacao
-                ? `<br/><span style="color:red">📝 ${observacao}</span>`
-                : ""
-            }
-          </td>
-          <td style="text-align:right">R$ ${(
-            (item.price || 0) * (item.qty || 1)
-          ).toFixed(2)}</td>
-        </tr>
-      `;
+          <tr>
+            <td style="text-align:center;">${item.qty || 1}</td>
+            <td>
+              ${item.name} ${item.size ? `(${item.size})` : ""}
+              ${item.flavors ? `<br/>🍕 ${item.flavors.join(" / ")}` : ""}
+              ${item.crust ? `<br/>🍞 ${item.crust.nome}` : ""}
+              ${item.addons?.length ? `<br/>➕ ${item.addons.map(a => a.nome).join(", ")}` : ""}
+              ${observacao ? `<br/><span style="color:red">📝 ${observacao}</span>` : ""}
+            </td>
+            <td style="text-align:right;">R$ ${(item.price * (item.qty || 1)).toFixed(2)}</td>
+          </tr>
+        `;
       })
       .join("");
 
@@ -181,43 +160,55 @@ export default function OrdersAdmin() {
         <head>
           <title>Entrega - Pedido #${numeroPedido}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h1 { font-size: 22px; margin-bottom: 15px; }
-            p { margin: 4px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { padding: 6px; border-bottom: 1px solid #ccc; font-size: 14px; }
-            th { text-align: left; }
-            .total { font-size: 18px; font-weight: bold; margin-top: 15px; text-align: right; }
+            body { font-family: monospace, Arial; background: #fff; padding: 10px; }
+            .cupom {
+              border: 2px dashed #000;
+              padding: 20px;
+              width: 320px;
+              margin: auto;
+            }
+            h1 { text-align: center; font-size: 18px; margin: 0; }
+            table { width: 100%; margin-top: 10px; border-collapse: collapse; }
+            th, td { padding: 4px 0; font-size: 14px; }
+            th { border-bottom: 1px solid #000; }
+            .total {
+              margin-top: 10px;
+              text-align: right;
+              font-weight: bold;
+              font-size: 16px;
+            }
+            .linha { border-top: 1px dashed #000; margin: 8px 0; }
+            .footer { text-align: center; font-size: 12px; margin-top: 15px; }
           </style>
         </head>
         <body>
-          <h1>🚚 Entrega - Pedido #${numeroPedido}</h1>
-          <p><strong>Cliente:</strong> ${pedido.customer || "—"}</p>
-          <p><strong>Telefone:</strong> ${pedido.phone || "—"}</p>
-          ${pedido.address ? `<p><strong>Endereço:</strong> ${pedido.address}</p>` : ""}
-          <p><strong>Pagamento:</strong> ${pedido.paymentMethod || "—"}</p>
-          <p><strong>Tipo:</strong> ${pedido.deliveryType || "—"}</p>
-          ${
-            pedido.observacoes || pedido.observacao
-              ? `<p><strong>Observações:</strong> ${pedido.observacoes || pedido.observacao}</p>`
-              : ""
-          }
-
-          <h2>Itens</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Qtd</th>
-                <th>Produto</th>
-                <th style="text-align:right">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itensHTML || "<tr><td colspan='3'>Nenhum item</td></tr>"}
-            </tbody>
-          </table>
-
-          <p class="total">💰 Total: R$ ${Number(pedido.total || 0).toFixed(2)}</p>
+          <div class="cupom">
+            <h1>🚚 ENTREGA - PEDIDO #${numeroPedido}</h1>
+            <div class="linha"></div>
+            <p><strong>Cliente:</strong> ${pedido.customer || "—"}</p>
+            <p><strong>Endereço:</strong> ${pedido.address || "—"}</p>
+            <p><strong>Telefone:</strong> ${pedido.phone || "—"}</p>
+            <p><strong>Pagamento:</strong> ${pedido.paymentMethod || "—"}</p>
+            <p><strong>Tipo:</strong> ${pedido.deliveryType || "—"}</p>
+            ${
+              pedido.observacoes || pedido.observacao
+                ? `<p><strong>Observações:</strong> ${pedido.observacoes || pedido.observacao}</p>`
+                : ""
+            }
+            <div class="linha"></div>
+            <table>
+              <thead>
+                <tr><th>QTD</th><th>ITEM</th><th>VALOR</th></tr>
+              </thead>
+              <tbody>
+                ${itensHTML}
+              </tbody>
+            </table>
+            <div class="linha"></div>
+            <p class="total">TOTAL: R$ ${Number(pedido.total || 0).toFixed(2)}</p>
+            <div class="linha"></div>
+            <p class="footer">Obrigado pela preferência! 🍕</p>
+          </div>
         </body>
       </html>
     `;
@@ -269,10 +260,55 @@ export default function OrdersAdmin() {
                     </p>
                   </div>
 
-                  <p className="mt-3 font-bold text-lg text-green-600">
+                  <p className="mt-1 font-bold text-lg text-green-600">
                     💰 R$ {Number(o.total || 0).toFixed(2)}
                   </p>
 
+                  {/* 🔹 Itens do pedido */}
+                  <div className="mt-2 text-sm text-gray-700">
+                    {(o.items || []).map((item, idx) => {
+                      const observacao =
+                        item.observacoes ||
+                        item.obs ||
+                        item.observacao ||
+                        (item.flavors && item.flavors[0]?.observacao) ||
+                        o.observacoes ||
+                        o.observacao ||
+                        "";
+
+                      return (
+                        <div
+                          key={idx}
+                          className="mb-2 border-b border-gray-200 pb-1"
+                        >
+                          <p className="font-medium">
+                            {item.qty || 1}x {item.name}{" "}
+                            {item.size ? `(${item.size})` : ""}
+                          </p>
+                          {item.flavors && (
+                            <p className="text-xs">
+                              🍕 Sabores: {item.flavors.join(" / ")}
+                            </p>
+                          )}
+                          {item.crust && (
+                            <p className="text-xs">🍞 Borda: {item.crust.nome}</p>
+                          )}
+                          {item.addons?.length > 0 && (
+                            <p className="text-xs">
+                              ➕ {item.addons.map((a) => a.nome).join(", ")}
+                            </p>
+                          )}
+                          {observacao && (
+                            <p className="text-xs text-red-600 font-semibold">
+                              📝 {observacao}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 🔹 Botões */}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       onClick={() => updateStatus(o.id, "PENDENTE")}
