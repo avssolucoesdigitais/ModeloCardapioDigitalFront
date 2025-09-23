@@ -37,7 +37,7 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:static top-0 left-0 h-full w-64 bg-gradient-to-b from-[#0C2340] to-[#1B2C50] text-white flex flex-col transform transition-transform duration-300 z-40 shadow-xl
+        className={`fixed md:static top-0 left-0 min-h-screen w-64 bg-gradient-to-b from-[#0C2340] to-[#1B2C50] text-white flex flex-col transform transition-transform duration-300 z-40 shadow-xl
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         {/* Logo / Título */}

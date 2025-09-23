@@ -1,13 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { db } from "../firebase";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  onSnapshot,
-} from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
 
 export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza" }) {
   const [phone, setPhone] = useState("");
@@ -60,14 +54,12 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
         setPagamento(data.pagamentoPreferido || "pix");
         onLogin({ id: phoneNumber, ...data });
 
-        // 🔹 Pedidos anteriores com sync de status em /orders
+        // 🔹 Pedidos anteriores
         const pedidosRef = collection(db, "users", phoneNumber, "pedidos");
         onSnapshot(pedidosRef, async (snap) => {
           const arr = await Promise.all(
             snap.docs.map(async (d) => {
               const data = d.data();
-
-              // sincronizar com orders
               const orderRef = doc(db, "orders", d.id);
               const orderSnap = await getDoc(orderRef);
 
@@ -135,11 +127,16 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-[420px] h-full bg-white shadow-2xl flex flex-col">
+
+      {/* 🔹 Responsivo: tela cheia no mobile, sidebar no desktop */}
+      <div className="w-full sm:w-[420px] h-full bg-white shadow-2xl flex flex-col animate-slideIn">
         {/* Cabeçalho */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold">Minha Conta</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+        <div className="flex justify-between items-center p-4 border-b bg-green-600 text-white">
+          <h2 className="text-lg font-semibold">Minha Conta</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-green-700 rounded-full transition"
+          >
             <X />
           </button>
         </div>
@@ -169,7 +166,7 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {tab === "cadastro" && (
             <div className="flex flex-col gap-3">
               <input
@@ -177,21 +174,20 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
                 placeholder="Telefone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="border border-black text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
               />
               <input
                 type="text"
                 placeholder="Nome completo"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="border border-black text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
               />
 
-              {/* 🔹 Select de bairros permitidos */}
               <select
                 value={bairro}
                 onChange={(e) => setBairro(e.target.value)}
-                className="border border-black text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
               >
                 <option value="">Selecione um bairro...</option>
                 {bairrosDisponiveis.map((b, idx) => (
@@ -206,27 +202,27 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
                 placeholder="Rua"
                 value={rua}
                 onChange={(e) => setRua(e.target.value)}
-                className="border border-black text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
               />
               <input
                 type="text"
                 placeholder="Número"
                 value={numero}
                 onChange={(e) => setNumero(e.target.value)}
-                className="border border-black text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
               />
               <input
                 type="text"
                 placeholder="Ponto de referência"
                 value={referencia}
                 onChange={(e) => setReferencia(e.target.value)}
-                className="border border-black text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
               />
 
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full border border-black text-black bg-white py-3 rounded-lg hover:bg-green-600 hover:text-white transition-colors"
+                className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition"
               >
                 {loading ? "Salvando..." : "Salvar"}
               </button>
@@ -236,16 +232,18 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
           {tab === "pedidos" && (
             <div>
               {pedidos.length === 0 ? (
-                <p className="text-gray-600">Nenhum pedido encontrado.</p>
+                <p className="text-gray-600 text-center">Nenhum pedido encontrado.</p>
               ) : (
                 <div className="space-y-3">
                   {pedidos.map((p) => (
                     <div
                       key={p.id}
-                      className="border border-black rounded-lg p-4 bg-black text-white shadow-sm"
+                      className="border rounded-lg p-4 bg-gray-50 shadow-sm"
                     >
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold">Pedido #{p.orderNumber}</span>
+                        <span className="font-semibold text-gray-800">
+                          Pedido #{p.orderNumber}
+                        </span>
                         <span
                           className={`text-xs px-2 py-1 rounded ${
                             p.status === "FINALIZADO"
@@ -258,11 +256,19 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
                           {p.status}
                         </span>
                       </div>
-                      <div className="mt-2 text-sm">
+                      <div className="mt-2 text-sm text-gray-700">
                         Total: <strong>R$ {Number(p.total).toFixed(2)}</strong>
                       </div>
-                      <div className="text-xs text-gray-300">
-                        {p.createdAt ? new Date(p.createdAt).toLocaleString() : ""}
+                      <div className="text-xs text-gray-500">
+                        {p.createdAt
+                          ? new Date(p.createdAt).toLocaleString("pt-BR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
                       </div>
                     </div>
                   ))}

@@ -134,7 +134,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 font-medium border-b-2 ${
+            className={`px-4 py-2 font-medium border-b-2 transition ${
               activeTab === tab.id
                 ? "border-[#009DFF] text-[#009DFF]"
                 : "border-transparent text-gray-500 hover:text-[#009DFF]"
@@ -146,156 +146,170 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       </div>
 
       {/* Aba Loja */}
-      {activeTab === "loja" && (
-        <section className="bg-white rounded-xl shadow p-6 border space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Nome da Loja"
-              value={config.nomeLoja}
-              onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
-              className="border p-2 rounded w-full"
-            />
+{activeTab === "loja" && (
+  <section className="bg-white rounded-xl shadow-md p-6 space-y-6">
+    {/* Nome + Instagram */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input
+        type="text"
+        placeholder="Nome da Loja"
+        value={config.nomeLoja}
+        onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
+        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
+      />
 
-            <input
-              type="text"
-              placeholder="Link do Instagram (ex: https://instagram.com/daypizza)"
-              value={config.instagram}
-              onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
-              className="border p-2 rounded w-full"
-            />
+      <input
+        type="text"
+        placeholder="Instagram (ex: https://instagram.com/daypizza)"
+        value={config.instagram}
+        onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
+        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
+      />
+    </div>
+
+    {/* Uploads */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Logo */}
+      <div className="space-y-2">
+        <label className="block font-semibold">Logo:</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = await uploadToCloudinary(file);
+            setConfig({ ...config, logoUrl: url });
+          }}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                     file:rounded-lg file:border-0 file:text-sm file:font-semibold
+                     file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
+        {config.logoUrl && (
+          <div className="mt-2 flex flex-col items-start gap-2">
+            <img src={config.logoUrl} alt="Logo" className="h-16 rounded border" />
+            <button
+              onClick={() => setConfig({ ...config, logoUrl: "" })}
+              className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+            >
+              Remover
+            </button>
           </div>
+        )}
+      </div>
 
-          {/* Uploads em grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Logo */}
-            <div>
-              <label className="block font-semibold mb-1">Logo:</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  const url = await uploadToCloudinary(file);
-                  setConfig({ ...config, logoUrl: url });
-                }}
-              />
-              {config.logoUrl && (
-                <div className="mt-2 flex items-center gap-3">
-                  <img src={config.logoUrl} alt="Logo" className="h-16 rounded border" />
-                  <button
-                    onClick={() => setConfig({ ...config, logoUrl: "" })}
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                  >
-                    Remover
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Banner */}
-            <div>
-              <label className="block font-semibold mb-1">Banner:</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  const url = await uploadToCloudinary(file);
-                  setConfig({ ...config, bannerUrl: url });
-                }}
-              />
-              {config.bannerUrl && (
-                <div className="mt-2 flex items-center gap-3">
-                  <img src={config.bannerUrl} alt="Banner" className="h-24 rounded border" />
-                  <button
-                    onClick={() => setConfig({ ...config, bannerUrl: "" })}
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                  >
-                    Remover
-                  </button>
-                </div>
-              )}
-            </div>
+      {/* Banner */}
+      <div className="space-y-2">
+        <label className="block font-semibold">Banner:</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = await uploadToCloudinary(file);
+            setConfig({ ...config, bannerUrl: url });
+          }}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                     file:rounded-lg file:border-0 file:text-sm file:font-semibold
+                     file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
+        {config.bannerUrl && (
+          <div className="mt-2 flex flex-col items-start gap-2">
+            <img src={config.bannerUrl} alt="Banner" className="h-24 rounded border" />
+            <button
+              onClick={() => setConfig({ ...config, bannerUrl: "" })}
+              className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+            >
+              Remover
+            </button>
           </div>
+        )}
+      </div>
+    </div>
 
-          {/* Cores */}
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2">
-              Cor primária:
-              <input
-                type="color"
-                value={config.primaryColor}
-                onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              Cor secundária:
-              <input
-                type="color"
-                value={config.secondaryColor}
-                onChange={(e) => setConfig({ ...config, secondaryColor: e.target.value })}
-              />
-            </label>
-          </div>
+    {/* Cores */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label className="flex items-center justify-between border rounded-lg p-2">
+        <span className="font-medium">Cor primária:</span>
+        <input
+          type="color"
+          value={config.primaryColor}
+          onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
+        />
+      </label>
+      <label className="flex items-center justify-between border rounded-lg p-2">
+        <span className="font-medium">Cor secundária:</span>
+        <input
+          type="color"
+          value={config.secondaryColor}
+          onChange={(e) => setConfig({ ...config, secondaryColor: e.target.value })}
+        />
+      </label>
+    </div>
 
-          {/* WhatsApp */}
-          <input
-            type="text"
-            placeholder="WhatsApp (ex: 5588981356668)"
-            value={config.whatsapp}
-            onChange={(e) => setConfig({ ...config, whatsapp: e.target.value })}
-            className="border p-2 rounded w-full"
-          />
+    {/* WhatsApp */}
+    <input
+      type="text"
+      placeholder="WhatsApp (ex: 5588981356668)"
+      value={config.whatsapp}
+      onChange={(e) => setConfig({ ...config, whatsapp: e.target.value })}
+      className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
+    />
 
-          <button
-            onClick={saveConfig}
-            disabled={saving}
-            className="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg hover:opacity-90"
-          >
-            {saving ? "Salvando..." : "Salvar Configuração"}
-          </button>
-        </section>
-      )}
+    <button
+      onClick={saveConfig}
+      disabled={saving}
+      className="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg font-semibold hover:opacity-90 transition"
+    >
+      {saving ? "Salvando..." : "Salvar Configuração"}
+    </button>
+  </section>
+)}
+
 
       {/* Aba Bairros */}
       {activeTab === "bairros" && (
-        <section className="bg-white rounded-xl shadow p-6 border">
-          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <section className="bg-white rounded-xl shadow-md p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               placeholder="Nome do bairro"
               value={bairroNome}
               onChange={(e) => setBairroNome(e.target.value)}
-              className="border p-2 rounded flex-1"
+              className="border rounded-lg px-3 py-2 flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
             />
             <input
               type="number"
               placeholder="Taxa de entrega"
               value={bairroTaxa}
               onChange={(e) => setBairroTaxa(e.target.value)}
-              className="border p-2 rounded flex-1"
+              className="border rounded-lg px-3 py-2 flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
             />
             <button
               onClick={handleAddBairro}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition w-full sm:w-auto"
             >
-              Adicionar
+              ➕ Adicionar
             </button>
           </div>
           <ul className="divide-y">
             {config.bairros?.map((b, idx) => (
-              <li key={idx} className="flex justify-between items-center py-2">
+              <li
+                key={idx}
+                className="flex justify-between items-center py-2 text-gray-700"
+              >
                 <span>
-                  {b.nome} — R$ {b.taxa.toFixed(2)}
+                  {b.nome} —{" "}
+                  <span className="font-medium">
+                    R$ {b.taxa.toFixed(2).replace(".", ",")}
+                  </span>
                 </span>
                 <button
                   onClick={() => handleDeleteBairro(b.nome)}
-                  className="text-red-500 hover:underline"
+                  className="text-red-600 font-semibold hover:text-red-800"
                 >
-                  Excluir
+                  ✕
                 </button>
               </li>
             ))}
@@ -303,82 +317,79 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
         </section>
       )}
 
-{/* Aba Horários */}
-{activeTab === "horarios" && (
-  <section className="bg-white rounded-xl shadow p-6 border">
-    <div className="grid gap-4">
-      {DIAS_ORDENADOS.map(({ key, label }) => (
-        <div
-          key={key}
-          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b pb-3"
-        >
-          {/* Nome do dia */}
-          <span className="w-full sm:w-32 font-medium">{label}:</span>
-
-          {/* Inputs + botão */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
-            <div className="flex gap-2 flex-1">
-              <input
-                type="time"
-                value={config.horarios[key]?.abre || ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    horarios: {
-                      ...config.horarios,
-                      [key]: { ...config.horarios[key], abre: e.target.value },
-                    },
-                  })
-                }
-                className="flex-1 border p-2 rounded"
-              />
-              <span className="flex items-center">às</span>
-              <input
-                type="time"
-                value={config.horarios[key]?.fecha || ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    horarios: {
-                      ...config.horarios,
-                      [key]: { ...config.horarios[key], fecha: e.target.value },
-                    },
-                  })
-                }
-                className="flex-1 border p-2 rounded"
-              />
-            </div>
-
-            {/* 🔹 Botão Remover responsivo */}
-            {(config.horarios[key]?.abre || config.horarios[key]?.fecha) && (
-              <button
-                onClick={() =>
-                  setConfig({
-                    ...config,
-                    horarios: {
-                      ...config.horarios,
-                      [key]: { abre: "", fecha: "" },
-                    },
-                  })
-                }
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-red-600 w-full sm:w-auto"
+      {/* Aba Horários */}
+      {activeTab === "horarios" && (
+        <section className="bg-white rounded-xl shadow-md p-6 space-y-6">
+          <div className="grid gap-4">
+            {DIAS_ORDENADOS.map(({ key, label }) => (
+              <div
+                key={key}
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b pb-3"
               >
-                Remover
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
+                <span className="w-full sm:w-32 font-medium">{label}:</span>
 
-    <button
-      onClick={handleSaveHorarios}
-      className="mt-4 px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg hover:opacity-90 w-full sm:w-auto"
-    >
-      Salvar Horários
-    </button>
-  </section>
-)}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
+                  <div className="flex gap-2 flex-1">
+                    <input
+                      type="time"
+                      value={config.horarios[key]?.abre || ""}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          horarios: {
+                            ...config.horarios,
+                            [key]: { ...config.horarios[key], abre: e.target.value },
+                          },
+                        })
+                      }
+                      className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    <span className="flex items-center">às</span>
+                    <input
+                      type="time"
+                      value={config.horarios[key]?.fecha || ""}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          horarios: {
+                            ...config.horarios,
+                            [key]: { ...config.horarios[key], fecha: e.target.value },
+                          },
+                        })
+                      }
+                      className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+
+                  {(config.horarios[key]?.abre || config.horarios[key]?.fecha) && (
+                    <button
+                      onClick={() =>
+                        setConfig({
+                          ...config,
+                          horarios: {
+                            ...config.horarios,
+                            [key]: { abre: "", fecha: "" },
+                          },
+                        })
+                      }
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition w-full sm:w-auto"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleSaveHorarios}
+            className="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg hover:opacity-90 transition"
+          >
+            Salvar Horários
+          </button>
+        </section>
+      )}
     </div>
   );
 }

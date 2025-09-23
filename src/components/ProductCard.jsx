@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 export default function ProductCard({ p, onAdd }) {
   const [selectedSize, setSelectedSize] = useState("");
 
-  // lista de tamanhos válidos
   const sizes =
     p.prices && Object.keys(p.prices).length > 0
       ? Object.entries(p.prices).filter(([size]) => size)
@@ -14,20 +13,28 @@ export default function ProductCard({ p, onAdd }) {
   const category = p.category?.toLowerCase();
 
   const handleAdd = () => {
-    if (category === "pizza" || category === "acai") {
-      // 🔹 dispara o onAdd → abre modal certo
-      onAdd({ id: p.id, size: selectedSize });
+    if (category === "pizza") {
+      onAdd({
+        id: p.id,
+        size: selectedSize || "", // pode vir vazio; modal resolve auto-size
+        firstFlavorId: p.id,      // sabor do card (inteira) já vai como preset
+      });
       return;
     }
 
-    // 🔹 produtos normais
+    if (category === "acai") {
+      onAdd({ id: p.id, size: selectedSize || "" });
+      return;
+    }
+
+    // produtos normais
     if (sizes.length > 0 && !selectedSize) {
       alert("Selecione um tamanho antes de adicionar ao carrinho!");
       return;
     }
 
     const price =
-      sizes.length > 0 ? p.prices[selectedSize] : p.prices?.promocao || 0;
+      sizes.length > 0 ? Number(p.prices[selectedSize]) : Number(p.prices?.promocao || 0);
 
     onAdd({
       id: p.id,
@@ -50,22 +57,14 @@ export default function ProductCard({ p, onAdd }) {
       whileTap={{ scale: 0.97 }}
       className="flex items-center justify-between border rounded-lg p-4 bg-white transition"
     >
-      {/* Info */}
       <div className="flex-1 pr-4">
         <h3 className="font-semibold text-lg text-gray-800">{p.name}</h3>
-        {p.description && (
-          <p className="text-sm text-gray-600">{p.description}</p>
-        )}
+        {p.description && <p className="text-sm text-gray-600">{p.description}</p>}
 
-        {/* Renderização dinâmica */}
         {category === "acai" ? (
-          <p className="mt-2 text-purple-600 font-bold text-lg">
-            Monte seu Açaí 🍧
-          </p>
+          <p className="mt-2 text-purple-600 font-bold text-lg">Monte seu Açaí 🍧</p>
         ) : category === "pizza" ? (
-          <p className="mt-2 text-red-600 font-bold text-lg">
-            Escolha os sabores 🍕
-          </p>
+          <p className="mt-2 text-red-600 font-bold text-lg">Escolha os sabores 🍕</p>
         ) : sizes.length > 0 ? (
           <div className="flex gap-2 mt-2 flex-wrap">
             {sizes.map(([size, price]) => (
@@ -79,17 +78,16 @@ export default function ProductCard({ p, onAdd }) {
                     : "bg-gray-200 hover:bg-gray-300"
                 }`}
               >
-                {size} - R$ {price.toFixed(2)}
+                {size} - R$ {Number(price).toFixed(2)}
               </motion.button>
             ))}
           </div>
         ) : (
           <p className="mt-2 text-green-600 font-bold text-lg">
-            R$ {p.prices?.promocao?.toFixed(2) || "0,00"}
+            R$ {Number(p.prices?.promocao || 0).toFixed(2)}
           </p>
         )}
 
-        {/* Botão principal */}
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={handleAdd}
@@ -102,16 +100,11 @@ export default function ProductCard({ p, onAdd }) {
                 : "bg-green-600 hover:bg-green-700 text-white"
             }`}
         >
-          <FaPlus />{" "}
-          {category === "acai"
-            ? "Montar Açaí"
-            : category === "pizza"
-            ? "Montar Pizza"
-            : "Adicionar"}
+          <FaPlus />
+          {category === "acai" ? "Montar Açaí" : category === "pizza" ? "Montar Pizza" : "Adicionar"}
         </motion.button>
       </div>
 
-      {/* Imagem */}
       {p.image && (
         <motion.img
           src={p.image}
