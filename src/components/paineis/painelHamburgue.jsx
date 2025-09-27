@@ -96,14 +96,7 @@ export default function PainelHamburguer() {
         />
       </section>
 
-      {/* Acompanhamentos */}
-      <section>
-        <h2 className="text-xl font-bold mb-3">🍟 Acompanhamentos</h2>
-        <ItemList
-          items={docData.acompanhamentos || []}
-          onChange={(items) => updateSection("acompanhamentos", items)}
-        />
-      </section>
+     
     </div>
   );
 }
