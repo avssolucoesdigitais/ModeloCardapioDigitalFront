@@ -70,10 +70,10 @@ export default function PizzaBuilderModal({
     setSelectedAddons([]);
     setQty(1);
 
-    // define tamanho inicial (preset > único tamanho > vazio)
     const keys = Object.keys(baseProduct?.prices || {});
     const onlyOne = keys.length === 1 ? keys[0] : "";
-    const presetSize = preset?.size && keys.includes(preset.size) ? preset.size : "";
+    const presetSize =
+      preset?.size && keys.includes(preset.size) ? preset.size : "";
     setSize(presetSize || onlyOne || "");
   }, [open, baseProduct, preset]);
 
@@ -87,17 +87,8 @@ export default function PizzaBuilderModal({
     }
   }, [open, pizzas, preset, baseProduct]);
 
-  // se for INTEIRA e já temos size + 1 sabor, pula para Borda
-  useEffect(() => {
-    if (!open) return;
-    if (step === 1 && tipo === "inteira" && size && sabores.length >= 1) {
-      setStep(3);
-    }
-  }, [open, step, tipo, size, sabores]);
-
   if (!open || !baseProduct) return null;
 
-  // fixa 1º sabor no MEIO caso tenha vindo de preset ou do próprio card
   const pinnedFirstId =
     tipo === "meio" ? (preset?.firstFlavorId ?? baseProduct?.id ?? null) : null;
 
@@ -105,14 +96,13 @@ export default function PizzaBuilderModal({
   const handleToggleSabor = (sabor) => {
     if (tipo === "inteira") {
       setSabores([sabor]);
-      setStep(3); // direto para borda
       return;
     }
 
-    // MEIO A MEIO
+    // meio a meio
     const exists = sabores.find((s) => s.id === sabor.id);
     if (exists) {
-      if (pinnedFirstId && sabor.id === pinnedFirstId) return; // não remove o fixo
+      if (pinnedFirstId && sabor.id === pinnedFirstId) return;
       setSabores(sabores.filter((s) => s.id !== sabor.id));
       return;
     }
@@ -122,21 +112,13 @@ export default function PizzaBuilderModal({
       return;
     }
 
-    setSabores([...sabores, sabor]);
+    if (sabores.some((s) => s.id === sabor.id)) return;
 
-    // ao completar 2 sabores, seguir para borda
-    if (sabores.length + 1 === 2) setStep(3);
+    setSabores([...sabores, sabor]);
   };
 
   const handleNextFromStep1 = () => {
-    // considera preset OU já ter sabor setado pelo efeito acima
-    const hasAutoFlavor =
-      !!(preset?.firstFlavorId ?? baseProduct?.id) || sabores.length >= 1;
-    if (tipo === "inteira") {
-      setStep(hasAutoFlavor ? 3 : 2);
-    } else {
-      setStep(2);
-    }
+    setStep(2); // sempre vai para seleção de sabores
   };
 
   const handleConfirm = () => {
@@ -147,7 +129,7 @@ export default function PizzaBuilderModal({
       return alert("Escolha os 2 sabores!");
 
     const item = {
-      id: `pizza-${tipo}-${Date.now()}`,
+      id: `pizza-${tipo}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       name:
         tipo === "inteira"
           ? sabores[0].name
@@ -158,7 +140,7 @@ export default function PizzaBuilderModal({
           : sabores.map((s) => s.name),
       size,
       qty,
-      price: precoBase + precoAddons + precoBorda,
+      price: total,
       addons: extras.filter((a) => selectedAddons.includes(a.nome)),
       crust: selectedBorda
         ? { nome: selectedBorda.nome, preco: precoBorda }
@@ -173,9 +155,15 @@ export default function PizzaBuilderModal({
 
   // ---------- UI ----------
   const StepBadge = ({ idx, label }) => (
-    <div className={`flex items-center gap-2 ${step === idx ? "font-semibold" : "opacity-70"}`}>
-      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs
-        ${step === idx ? "bg-yellow-500 text-white" : "bg-gray-200"}`}>
+    <div
+      className={`flex items-center gap-2 ${
+        step === idx ? "font-semibold" : "opacity-70"
+      }`}
+    >
+      <span
+        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs
+        ${step === idx ? "bg-yellow-500 text-white" : "bg-gray-200"}`}
+      >
         {idx}
       </span>
       <span className="text-sm">{label}</span>
@@ -188,7 +176,12 @@ export default function PizzaBuilderModal({
                       max-h-[80vh] overflow-y-auto p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold">🍕 Montar Pizza</h2>
-          <button onClick={onClose} className="text-sm text-gray-500 hover:underline">Fechar</button>
+          <button
+            onClick={onClose}
+            className="text-sm text-gray-500 hover:underline"
+          >
+            Fechar
+          </button>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
@@ -216,12 +209,30 @@ export default function PizzaBuilderModal({
             </select>
 
             <div className="flex gap-3 mb-3">
-              <label className={`flex-1 px-3 py-2 border rounded-lg text-center cursor-pointer ${tipo === "inteira" ? "bg-yellow-500 text-white" : ""}`}>
-                <input type="radio" className="hidden" checked={tipo === "inteira"} onChange={() => setTipo("inteira")} />
+              <label
+                className={`flex-1 px-3 py-2 border rounded-lg text-center cursor-pointer ${
+                  tipo === "inteira" ? "bg-yellow-500 text-white" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="hidden"
+                  checked={tipo === "inteira"}
+                  onChange={() => setTipo("inteira")}
+                />
                 Inteira
               </label>
-              <label className={`flex-1 px-3 py-2 border rounded-lg text-center cursor-pointer ${tipo === "meio" ? "bg-yellow-500 text-white" : ""}`}>
-                <input type="radio" className="hidden" checked={tipo === "meio"} onChange={() => setTipo("meio")} />
+              <label
+                className={`flex-1 px-3 py-2 border rounded-lg text-center cursor-pointer ${
+                  tipo === "meio" ? "bg-yellow-500 text-white" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="hidden"
+                  checked={tipo === "meio"}
+                  onChange={() => setTipo("meio")}
+                />
                 Meio a Meio
               </label>
             </div>
@@ -250,7 +261,10 @@ export default function PizzaBuilderModal({
             {sabores.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
                 {sabores.map((s) => (
-                  <span key={s.id} className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs">
+                  <span
+                    key={s.id}
+                    className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs"
+                  >
                     {s.name}
                     {pinnedFirstId === s.id && " (fixo)"}
                   </span>
@@ -270,7 +284,9 @@ export default function PizzaBuilderModal({
                   <label
                     key={pz.id}
                     className={`flex items-center justify-between gap-2 p-2 cursor-pointer
-                                ${selected ? "bg-yellow-50" : ""} ${isPinned ? "opacity-70" : ""}`}
+                                ${selected ? "bg-yellow-50" : ""} ${
+                      isPinned ? "opacity-70" : ""
+                    }`}
                     title={isPinned ? "1º sabor já escolhido" : ""}
                   >
                     <div className="flex items-center gap-2">
@@ -282,31 +298,31 @@ export default function PizzaBuilderModal({
                       />
                       <span>{pz.name}</span>
                     </div>
-                    <span className="text-sm">R$ {Number(preco).toFixed(2)}</span>
+                    <span className="text-sm">
+                      R$ {Number(preco).toFixed(2)}
+                    </span>
                   </label>
                 );
               })}
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(1)} className="px-4 py-2 border rounded-lg">Voltar</button>
-              {tipo === "meio" ? (
-                <button
-                  onClick={() => setStep(3)}
-                  disabled={sabores.length < 2}
-                  className="px-4 py-2 bg-yellow-500 disabled:opacity-50 text-white rounded-lg"
-                >
-                  Próximo
-                </button>
-              ) : (
-                <button
-                  onClick={() => setStep(3)}
-                  disabled={sabores.length < 1}
-                  className="px-4 py-2 bg-yellow-500 disabled:opacity-50 text-white rounded-lg"
-                >
-                  Próximo
-                </button>
-              )}
+              <button
+                onClick={() => setStep(1)}
+                className="px-4 py-2 border rounded-lg"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={() => setStep(3)}
+                disabled={
+                  (tipo === "inteira" && sabores.length < 1) ||
+                  (tipo === "meio" && sabores.length < 2)
+                }
+                className="px-4 py-2 bg-yellow-500 disabled:opacity-50 text-white rounded-lg"
+              >
+                Próximo
+              </button>
             </div>
           </>
         )}
@@ -316,26 +332,56 @@ export default function PizzaBuilderModal({
           <>
             <h3 className="font-semibold mb-2">Borda recheada</h3>
             <div className="flex flex-wrap gap-2 mb-4">
-              <label className={`px-3 py-1 border rounded-full cursor-pointer ${!selectedBorda ? "bg-yellow-50" : ""}`}>
-                <input type="radio" className="hidden" checked={!selectedBorda} onChange={() => setSelectedBorda(null)} />
+              <label
+                className={`px-3 py-1 border rounded-full cursor-pointer ${
+                  !selectedBorda ? "bg-yellow-50" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="hidden"
+                  checked={!selectedBorda}
+                  onChange={() => setSelectedBorda(null)}
+                />
                 Sem borda
               </label>
               {bordas.map((b, idx) => (
-                <label key={idx} className={`px-3 py-1 border rounded-full cursor-pointer ${selectedBorda?.nome === b.nome ? "bg-yellow-500 text-white" : ""}`}>
+                <label
+                  key={idx}
+                  className={`px-3 py-1 border rounded-full cursor-pointer ${
+                    selectedBorda?.nome === b.nome
+                      ? "bg-yellow-500 text-white"
+                      : ""
+                  }`}
+                >
                   <input
                     type="radio"
                     className="hidden"
                     checked={selectedBorda?.nome === b.nome}
                     onChange={() => setSelectedBorda(b)}
                   />
-                  {b.nome} ({Number(b.preco) > 0 ? `+R$ ${Number(b.preco).toFixed(2)}` : "Grátis"})
+                  {b.nome} (
+                  {Number(b.preco) > 0
+                    ? `+R$ ${Number(b.preco).toFixed(2)}`
+                    : "Grátis"}
+                  )
                 </label>
               ))}
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(2)} className="px-4 py-2 border rounded-lg">Voltar</button>
-              <button onClick={() => setStep(4)} className="px-4 py-2 bg-yellow-500 text-white rounded-lg">Próximo</button>
+              <button
+                onClick={() => setStep(2)}
+                className="px-4 py-2 border rounded-lg"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={() => setStep(4)}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-lg"
+              >
+                Próximo
+              </button>
             </div>
           </>
         )}
@@ -346,14 +392,23 @@ export default function PizzaBuilderModal({
             <h3 className="font-semibold mb-2">Adicionais</h3>
             <div className="flex flex-wrap gap-2 mb-4">
               {extras.map((a, idx) => (
-                <label key={idx} className={`px-3 py-1 border rounded-full cursor-pointer ${selectedAddons.includes(a.nome) ? "bg-yellow-500 text-white" : ""}`}>
+                <label
+                  key={idx}
+                  className={`px-3 py-1 border rounded-full cursor-pointer ${
+                    selectedAddons.includes(a.nome)
+                      ? "bg-yellow-500 text-white"
+                      : ""
+                  }`}
+                >
                   <input
                     type="checkbox"
                     className="hidden"
                     checked={selectedAddons.includes(a.nome)}
                     onChange={() =>
                       setSelectedAddons((prev) =>
-                        prev.includes(a.nome) ? prev.filter((n) => n !== a.nome) : [...prev, a.nome]
+                        prev.includes(a.nome)
+                          ? prev.filter((n) => n !== a.nome)
+                          : [...prev, a.nome]
                       )
                     }
                   />
@@ -363,8 +418,18 @@ export default function PizzaBuilderModal({
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(3)} className="px-4 py-2 border rounded-lg">Voltar</button>
-              <button onClick={() => setStep(5)} className="px-4 py-2 bg-yellow-500 text-white rounded-lg">Próximo</button>
+              <button
+                onClick={() => setStep(3)}
+                className="px-4 py-2 border rounded-lg"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={() => setStep(5)}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-lg"
+              >
+                Próximo
+              </button>
             </div>
           </>
         )}
@@ -382,23 +447,51 @@ export default function PizzaBuilderModal({
             </p>
             {selectedBorda && (
               <p className="text-sm mb-1">
-                Borda: {selectedBorda.nome} ({Number(selectedBorda.preco) > 0 ? `+R$ ${Number(selectedBorda.preco).toFixed(2)}` : "Grátis"})
+                Borda: {selectedBorda.nome} (
+                {Number(selectedBorda.preco) > 0
+                  ? `+R$ ${Number(selectedBorda.preco).toFixed(2)}`
+                  : "Grátis"}
+                )
               </p>
             )}
             {selectedAddons.length > 0 && (
-              <p className="text-sm mb-1">Adicionais: {selectedAddons.join(", ")}</p>
+              <p className="text-sm mb-1">
+                Adicionais: {selectedAddons.join(", ")}
+              </p>
             )}
-            <p className="font-bold text-lg mb-4">Total: R$ {total.toFixed(2)}</p>
+            <p className="font-bold text-lg mb-4">
+              Total: R$ {total.toFixed(2)}
+            </p>
 
             <div className="flex items-center justify-between mb-4">
-              <button className="w-8 h-8 border rounded-full" onClick={() => setQty((q) => Math.max(1, q - 1))}>-</button>
+              <button
+                className="w-8 h-8 border rounded-full"
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+              >
+                -
+              </button>
               <span>{qty}</span>
-              <button className="w-8 h-8 border rounded-full" onClick={() => setQty((q) => q + 1)}>+</button>
+              <button
+                className="w-8 h-8 border rounded-full"
+                onClick={() => setQty((q) => q + 1)}
+              >
+                +
+              </button>
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(4)} className="px-4 py-2 border rounded-lg">Voltar</button>
-              <button onClick={handleConfirm} className="px-4 py-2 bg-green-600 text-white rounded-lg">Adicionar ao Carrinho</button>
+              <button
+                onClick={() => setStep(4)}
+                className="px-4 py-2 border rounded-lg"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg"
+              >
+                Adicionar ao Carrinho
+              </button>
             </div>
           </>
         )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import uploadToCloudinary from "../utils/uploadToCloudinary";
 
 export default function FormProduto({
@@ -14,11 +14,31 @@ export default function FormProduto({
   const [loadingSave, setLoadingSave] = useState(false);
   const [file, setFile] = useState(null);
 
+  // 🔹 Referências para inputs → Enter pula para o próximo
+  const formRefs = useRef([]);
+
+  useEffect(() => {
+    formRefs.current = formRefs.current.slice(0, 10); // limita refs
+  }, []);
+
+  function handleKeyDown(e, idx) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const next = formRefs.current[idx + 1];
+      if (next) next.focus();
+    }
+  }
+
   async function handleSaveProduct() {
     if (!form.name) {
       alert("Nome obrigatório");
       return;
     }
+    if (!form.categoria) {
+      alert("Categoria obrigatória");
+      return;
+    }
+
     setLoadingSave(true);
 
     try {
@@ -27,10 +47,11 @@ export default function FormProduto({
         imageUrl = await uploadToCloudinary(file);
       }
 
+      // 🔹 Normaliza preços (aceita vírgula ou ponto)
       const normalizedPrices = Object.fromEntries(
         Object.entries(form.prices || {}).map(([k, v]) => [
           k,
-          parseFloat((v + "").replace(",", ".")) || 0,
+          parseFloat((v + "").replace(",", ".").replace(/[^0-9.]/g, "")) || 0,
         ])
       );
 
@@ -80,8 +101,8 @@ export default function FormProduto({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6 space-y-6">
-      <h2 className="text-lg font-bold flex items-center gap-2">
+    <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6 max-w-2xl mx-auto">
+      <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
         ➕ {editingIdx !== null ? "Editar Item" : "Adicionar Novo Item"}
       </h2>
 
@@ -91,11 +112,15 @@ export default function FormProduto({
           type="text"
           placeholder="Nome do produto"
           value={form.name}
+          ref={(el) => (formRefs.current[0] = el)}
+          onKeyDown={(e) => handleKeyDown(e, 0)}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="sm:col-span-2 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
         />
         <select
           value={form.available ? "true" : "false"}
+          ref={(el) => (formRefs.current[1] = el)}
+          onKeyDown={(e) => handleKeyDown(e, 1)}
           onChange={(e) =>
             setForm({ ...form, available: e.target.value === "true" })
           }
@@ -106,10 +131,29 @@ export default function FormProduto({
         </select>
       </div>
 
+      {/* Categoria */}
+      <div>
+        <select
+          value={form.categoria || ""}
+          ref={(el) => (formRefs.current[2] = el)}
+          onKeyDown={(e) => handleKeyDown(e, 2)}
+          onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+          className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+        >
+          <option value="">Selecione a categoria</option>
+          <option value="tradicional"> Tradicionais</option>
+          <option value="especial">Especiais</option>
+          <option value="doce"> Doces</option>
+         
+        </select>
+      </div>
+
       {/* Descrição */}
       <textarea
         placeholder="Descrição do produto"
         value={form.description}
+        ref={(el) => (formRefs.current[3] = el)}
+        onKeyDown={(e) => handleKeyDown(e, 3)}
         onChange={(e) => setForm({ ...form, description: e.target.value })}
         className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
         rows={3}
@@ -119,12 +163,13 @@ export default function FormProduto({
       <div className="space-y-3">
         <label className="font-semibold">Tamanhos (opcional)</label>
 
-        {/* Input + Botão Responsivos */}
         <div className="flex flex-col sm:flex-row gap-2 mt-1">
           <input
             type="text"
             placeholder="Ex: 250ml, Médio, Grande..."
             value={newSize}
+            ref={(el) => (formRefs.current[4] = el)}
+            onKeyDown={(e) => handleKeyDown(e, 4)}
             onChange={(e) => setNewSize(e.target.value)}
             className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
           />
@@ -138,7 +183,7 @@ export default function FormProduto({
         </div>
 
         <div className="grid gap-3">
-          {form.sizes.map((size) => (
+          {form.sizes.map((size, idx) => (
             <div
               key={size}
               className="flex flex-wrap items-center gap-3 border rounded-lg p-2 bg-gray-50"
@@ -152,6 +197,8 @@ export default function FormProduto({
                     ? String(form.prices[size]).replace(".", ",")
                     : ""
                 }
+                ref={(el) => (formRefs.current[5 + idx] = el)}
+                onKeyDown={(e) => handleKeyDown(e, 5 + idx)}
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^\d.,]/g, "");
                   setForm({
@@ -178,6 +225,8 @@ export default function FormProduto({
         <input
           type="file"
           accept="image/*"
+          ref={(el) => (formRefs.current[20] = el)}
+          onKeyDown={(e) => handleKeyDown(e, 20)}
           onChange={(e) => setFile(e.target.files[0])}
           className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
                      file:rounded-lg file:border-0 file:text-sm file:font-semibold

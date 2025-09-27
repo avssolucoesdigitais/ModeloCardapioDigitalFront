@@ -3,6 +3,33 @@ import { addDoc, collection, doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import useLojaConfig from "../hooks/useLojaConfig";
 
+/* Helpers */
+function parsePreco(valor) {
+  if (!valor) return 0;
+  const normalized = String(valor).replace(/[^\d,.-]/g, "").replace(",", ".");
+  return parseFloat(normalized) || 0;
+}
+
+function formatPreco(valor) {
+  return parsePreco(valor).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function sanitize(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(sanitize);
+  } else if (obj && typeof obj === "object") {
+    const clean = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      if (v !== undefined) clean[k] = sanitize(v);
+    });
+    return clean;
+  }
+  return obj;
+}
+
 export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = "daypizza" }) {
   const { config, loading: loadingConfig } = useLojaConfig(lojaId);
 
@@ -21,7 +48,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
   const subtotal = useMemo(() => {
     return itensCarrinho.reduce(
-      (acc, item) => acc + (item.qty || 0) * (item.price || 0),
+      (acc, item) => acc + (item.qty || 0) * parsePreco(item.price),
       0
     );
   }, [itensCarrinho]);
@@ -29,12 +56,12 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
   const taxaEntrega = useMemo(() => {
     if (entrega !== "entrega") return 0;
     const b = config?.bairros?.find((b) => b.nome === bairro);
-    return b ? Number(b.taxa || 0) : 0;
+    return b ? parsePreco(b.taxa) : 0;
   }, [bairro, entrega, config]);
 
   const total = subtotal + taxaEntrega;
 
-  // 🔹 Carregar cadastro do cliente (se já existir no localStorage)
+  // carregar cadastro salvo
   useEffect(() => {
     const savedPhone = localStorage.getItem("userPhone");
     if (!savedPhone) return;
@@ -90,7 +117,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
       const orderNumber = Date.now().toString().slice(-6);
 
-      // 🔹 Atualiza cadastro do cliente
+      // atualiza cadastro
       const userRef = doc(db, "users", phone);
       await setDoc(
         userRef,
@@ -108,8 +135,8 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
       );
       localStorage.setItem("userPhone", phone);
 
-      // 🔹 Salva pedido na coleção global
-      const orderDoc = await addDoc(collection(db, "orders"), {
+      // monta dados limpos
+      const orderData = sanitize({
         orderNumber,
         customer: nome,
         phone,
@@ -127,20 +154,23 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         createdAt: new Date().toISOString(),
       });
 
-      // 🔹 Salva pedido no histórico do cliente
+      // salva pedido global
+      const orderDoc = await addDoc(collection(db, "orders"), orderData);
+
+      // salva no histórico
       await setDoc(
         doc(db, "users", phone, "pedidos", orderDoc.id),
-        {
+        sanitize({
           orderNumber,
           items: itensCarrinho,
           total,
           status: "PENDENTE",
           createdAt: new Date().toISOString(),
-        },
+        }),
         { merge: true }
       );
 
-      // 🔹 Mensagem do WhatsApp
+      // mensagem whatsapp
       let msg = `🛒 *Novo Pedido*%0A`;
       msg += `👤 Cliente: ${nome}%0A`;
       msg += `📱 WhatsApp: ${phone}%0A`;
@@ -163,7 +193,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
       itensCarrinho.forEach((item) => {
         const qty = item?.qty ?? 0;
         const size = item?.size ? `(${item.size})` : "";
-        const unitPrice = Number(item?.price ?? 0).toFixed(2);
+        const unitPrice = formatPreco(parsePreco(item?.price ?? 0));
 
         msg += `- ${qty}x ${item.name} ${size}%0A`;
 
@@ -172,22 +202,22 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         }
         if (item.crust) {
           msg += `   Borda: ${item.crust.nome}`;
-          if (item.crust.preco > 0) msg += ` (+R$ ${item.crust.preco})`;
+          if (parsePreco(item.crust.preco) > 0) msg += ` (+${formatPreco(item.crust.preco)})`;
           msg += `%0A`;
         }
         if (Array.isArray(item.addons) && item.addons.length > 0) {
           msg += `   Adicionais: ${item.addons
-            .map((a) => `${a.nome} (+R$ ${a.preco})`)
+            .map((a) => `${a.nome} (+${formatPreco(a.preco)})`)
             .join(", ")}%0A`;
         }
-        msg += `   Preço unitário: R$ ${unitPrice}%0A`;
+        msg += `   Preço unitário: ${unitPrice}%0A`;
       });
 
-      msg += `%0A💰 Subtotal: R$ ${subtotal.toFixed(2)}%0A`;
+      msg += `%0A💰 Subtotal: ${formatPreco(subtotal)}%0A`;
       if (entrega === "entrega") {
-        msg += `🚚 Taxa de entrega: R$ ${taxaEntrega.toFixed(2)}%0A`;
+        msg += `🚚 Taxa de entrega: ${formatPreco(taxaEntrega)}%0A`;
       }
-      msg += `✅ Total: R$ ${total.toFixed(2)}`;
+      msg += `✅ Total: ${formatPreco(total)}`;
 
       let adminPhone = "558999999999";
       if (typeof whatsapp === "string" && whatsapp.trim()) {
@@ -221,90 +251,65 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
               {item.crust && (
                 <div>
                   🌟 Borda: {item.crust.nome}{" "}
-                  {item.crust.preco > 0 ? `(R$ ${item.crust.preco})` : "(Grátis)"}
+                  {parsePreco(item.crust.preco) > 0 ? `(${formatPreco(item.crust.preco)})` : "(Grátis)"}
                 </div>
               )}
               {item.addons?.length > 0 && (
                 <div>
                   ➕ Adicionais:{" "}
-                  {item.addons.map((a) => `${a.nome} (R$ ${a.preco})`).join(", ")}
+                  {item.addons.map((a) => `${a.nome} (${formatPreco(a.preco)})`).join(", ")}
                 </div>
               )}
-              <div>💵 Preço unitário: R$ {Number(item.price).toFixed(2)}</div>
+              <div>💵 Preço unitário: {formatPreco(item.price)}</div>
             </div>
           ))}
         </div>
 
         {/* Totais */}
         <div className="text-sm text-gray-600 mb-3">
-          <div>Subtotal: R$ {subtotal.toFixed(2)}</div>
-          <div>Taxa de entrega: R$ {taxaEntrega.toFixed(2)}</div>
-          <div className="font-semibold">Total: R$ {total.toFixed(2)}</div>
+          <div>Subtotal: {formatPreco(subtotal)}</div>
+          <div>Taxa de entrega: {formatPreco(taxaEntrega)}</div>
+          <div className="font-semibold">Total: {formatPreco(total)}</div>
         </div>
 
-        {/* Nome */}
+        {/* Formulário */}
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Seu nome</span>
-          <input
-            type="text"
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Digite seu nome"
-          />
+          <input type="text" className="mt-1 w-full border rounded-lg px-3 py-2"
+            value={nome} onChange={(e) => setNome(e.target.value)} />
         </label>
 
-        {/* WhatsApp */}
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Seu WhatsApp</span>
-          <input
-            type="tel"
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="(DDD) 9xxxx-xxxx"
-          />
+          <input type="tel" className="mt-1 w-full border rounded-lg px-3 py-2"
+            value={phone} onChange={(e) => setPhone(e.target.value)} />
         </label>
 
-        {/* Observações */}
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Observações do pedido</span>
-          <textarea
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            rows={3}
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-            placeholder="Ex: sem cebola, sem maionese..."
-          />
+          <textarea className="mt-1 w-full border rounded-lg px-3 py-2" rows={3}
+            value={observacao} onChange={(e) => setObservacao(e.target.value)} />
         </label>
 
-        {/* Entrega ou retirada */}
         <label className="block mb-4">
           <span className="text-sm text-gray-600">Entrega ou retirada</span>
-          <select
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={entrega}
-            onChange={(e) => setEntrega(e.target.value)}
-          >
+          <select className="mt-1 w-full border rounded-lg px-3 py-2"
+            value={entrega} onChange={(e) => setEntrega(e.target.value)}>
             <option value="entrega">Entrega</option>
             <option value="retirada">Retirada</option>
           </select>
         </label>
 
-        {/* Endereço */}
         {entrega === "entrega" && (
           <div className="mb-4 space-y-3">
             <label className="block">
               <span className="text-sm text-gray-600">Bairro</span>
-              <select
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-                value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
-              >
+              <select className="mt-1 w-full border rounded-lg px-3 py-2"
+                value={bairro} onChange={(e) => setBairro(e.target.value)}>
                 <option value="">Selecione...</option>
                 {config.bairros?.map((b, idx) => (
                   <option key={idx} value={b.nome}>
-                    {b.nome} - R$ {Number(b.taxa).toFixed(2)}
+                    {b.nome} - {formatPreco(b.taxa)}
                   </option>
                 ))}
               </select>
@@ -312,63 +317,41 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
             <label className="block">
               <span className="text-sm text-gray-600">Rua</span>
-              <input
-                type="text"
-                value={rua}
-                onChange={(e) => setRua(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-              />
+              <input type="text" value={rua} onChange={(e) => setRua(e.target.value)}
+                className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
 
             <label className="block">
               <span className="text-sm text-gray-600">Número</span>
-              <input
-                type="text"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-              />
+              <input type="text" value={numero} onChange={(e) => setNumero(e.target.value)}
+                className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
 
             <label className="block">
               <span className="text-sm text-gray-600">Ponto de referência</span>
-              <input
-                type="text"
-                value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-              />
+              <input type="text" value={referencia} onChange={(e) => setReferencia(e.target.value)}
+                className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
           </div>
         )}
 
-        {/* Pagamento */}
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Forma de pagamento</span>
-          <select
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={pagamento}
-            onChange={(e) => setPagamento(e.target.value)}
-          >
+          <select className="mt-1 w-full border rounded-lg px-3 py-2"
+            value={pagamento} onChange={(e) => setPagamento(e.target.value)}>
             <option value="pix">PIX</option>
             <option value="dinheiro">Dinheiro</option>
             <option value="cartão">Cartão</option>
           </select>
         </label>
 
-        {/* Botões */}
         <div className="flex gap-3">
-          <button
-            onClick={handleConfirmar}
-            disabled={loading}
-            className="flex-1 bg-green-600 text-white py-2 rounded-2xl hover:opacity-90"
-          >
+          <button onClick={handleConfirmar} disabled={loading}
+            className="flex-1 bg-green-600 text-white py-2 rounded-2xl hover:opacity-90">
             {loading ? "Processando..." : "Confirmar Pedido"}
           </button>
-          <button
-            onClick={onClose}
-            className="flex-1 border py-2 rounded-2xl hover:bg-gray-50"
-          >
+          <button onClick={onClose}
+            className="flex-1 border py-2 rounded-2xl hover:bg-gray-50">
             Cancelar
           </button>
         </div>

@@ -1,40 +1,77 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { FaPlus } from "react-icons/fa";
 import { motion } from "framer-motion";
 
+/* Helpers */
+function parsePreco(valor) {
+  if (!valor) return 0;
+  const normalized = String(valor).replace(/[^\d,.-]/g, "").replace(",", ".");
+  return parseFloat(normalized) || 0;
+}
+
+function formatPreco(valor) {
+  return parsePreco(valor).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 export default function ProductCard({ p, onAdd }) {
   const [selectedSize, setSelectedSize] = useState("");
+  const [selectedAddons, setSelectedAddons] = useState([]);
+  const [qty, setQty] = useState(1);
 
-  const sizes =
-    p.prices && Object.keys(p.prices).length > 0
-      ? Object.entries(p.prices).filter(([size]) => size)
-      : [];
+  const sizes = useMemo(() => {
+    if (!p.prices) return [];
+    return Object.entries(p.prices).filter(([size]) => size);
+  }, [p.prices]);
 
-  const category = p.category?.toLowerCase();
+  const category = (p.category || "").toLowerCase();
 
+  // ---------- PREÇO TOTAL ----------
+  const calculateTotalPrice = () => {
+    let basePrice = 0;
+
+    if (sizes.length > 0 && selectedSize) {
+      basePrice = parsePreco(p.prices[selectedSize]);
+    } else if (sizes.length === 1) {
+      basePrice = parsePreco(p.prices[Object.keys(p.prices)[0]]);
+    } else {
+      basePrice = parsePreco(p.preco || p.prices?.único);
+    }
+
+    const addonsTotal = selectedAddons.reduce(
+      (acc, a) => acc + parsePreco(a.preco || 0),
+      0
+    );
+
+    return (basePrice + addonsTotal) * qty;
+  };
+
+  // ---------- ADICIONAR ----------
   const handleAdd = () => {
-    if (category === "pizza") {
-      onAdd({
-        id: p.id,
-        size: selectedSize || "", // pode vir vazio; modal resolve auto-size
-        firstFlavorId: p.id,      // sabor do card (inteira) já vai como preset
-      });
+    if (category === "pastel" && p.montar && !selectedSize) {
+      alert("Escolha um tamanho para o pastel antes de continuar!");
       return;
     }
+    addToCart();
+  };
 
-    if (category === "acai") {
-      onAdd({ id: p.id, size: selectedSize || "" });
-      return;
+  const addToCart = () => {
+    let price;
+
+    if ((category === "hamburguer" && p.montar) || (category === "pastel" && p.montar)) {
+      // Montáveis
+      price = calculateTotalPrice();
+    } else if (category === "hamburguer" && !p.montar) {
+      price = parsePreco(p.preco);
+    } else if (sizes.length === 1) {
+      price = parsePreco(p.prices[Object.keys(p.prices)[0]]);
+    } else if (sizes.length > 0 && selectedSize) {
+      price = parsePreco(p.prices[selectedSize]);
+    } else {
+      price = parsePreco(p.preco || p.prices?.único);
     }
-
-    // produtos normais
-    if (sizes.length > 0 && !selectedSize) {
-      alert("Selecione um tamanho antes de adicionar ao carrinho!");
-      return;
-    }
-
-    const price =
-      sizes.length > 0 ? Number(p.prices[selectedSize]) : Number(p.prices?.promocao || 0);
 
     onAdd({
       id: p.id,
@@ -44,75 +81,112 @@ export default function ProductCard({ p, onAdd }) {
       price,
       size: selectedSize || "único",
       image: p.image,
-      qty: 1,
+      qty,
+      addons: [...selectedAddons].filter(Boolean),
     });
   };
 
+  // ---------- PREÇO EXIBIDO ----------
+  const priceToShow = (() => {
+    if (category === "pastel" && p.montar) {
+      return selectedSize
+        ? formatPreco(parsePreco(p.prices[selectedSize]))
+        : "Selecione um tamanho";
+    }
+    if (sizes.length > 0) {
+      return selectedSize
+        ? formatPreco(parsePreco(p.prices[selectedSize]))
+        : "Selecione um tamanho";
+    }
+    return formatPreco(parsePreco(p.preco || p.prices?.único));
+  })();
+
+  // ---------- RENDER ----------
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      whileHover={{ scale: 1.02, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
+      whileHover={{ scale: 1.02, boxShadow: "0 6px 18px rgba(0,0,0,0.12)" }}
       whileTap={{ scale: 0.97 }}
-      className="flex items-center justify-between border rounded-lg p-4 bg-white transition"
+      className="flex flex-col h-full border rounded-2xl p-4 bg-white shadow-sm"
     >
-      <div className="flex-1 pr-4">
-        <h3 className="font-semibold text-lg text-gray-800">{p.name}</h3>
-        {p.description && <p className="text-sm text-gray-600">{p.description}</p>}
-
-        {category === "acai" ? (
-          <p className="mt-2 text-purple-600 font-bold text-lg">Monte seu Açaí 🍧</p>
-        ) : category === "pizza" ? (
-          <p className="mt-2 text-red-600 font-bold text-lg">Escolha os sabores 🍕</p>
-        ) : sizes.length > 0 ? (
-          <div className="flex gap-2 mt-2 flex-wrap">
-            {sizes.map(([size, price]) => (
-              <motion.button
-                key={size}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setSelectedSize(size)}
-                className={`px-2 py-1 rounded border text-sm transition ${
-                  selectedSize === size
-                    ? "bg-black text-white border-black"
-                    : "bg-gray-200 hover:bg-gray-300"
-                }`}
-              >
-                {size} - R$ {Number(price).toFixed(2)}
-              </motion.button>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-2 text-green-600 font-bold text-lg">
-            R$ {Number(p.prices?.promocao || 0).toFixed(2)}
-          </p>
-        )}
-
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={handleAdd}
-          className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-sm shadow
-            ${
-              category === "acai"
-                ? "bg-purple-600 hover:bg-purple-700 text-white"
-                : category === "pizza"
-                ? "bg-red-600 hover:bg-red-700 text-white"
-                : "bg-green-600 hover:bg-green-700 text-white"
-            }`}
-        >
-          <FaPlus />
-          {category === "acai" ? "Montar Açaí" : category === "pizza" ? "Montar Pizza" : "Adicionar"}
-        </motion.button>
-      </div>
-
+      {/* Imagem */}
       {p.image && (
         <motion.img
           src={p.image}
           alt={p.name}
-          className="w-24 h-24 object-cover rounded-lg shadow"
+          className="w-full h-40 object-cover rounded-lg mb-3"
           whileHover={{ scale: 1.05 }}
         />
       )}
+
+      {/* Nome + descrição */}
+      <h3 className="font-semibold text-lg text-gray-800 capitalize">{p.name}</h3>
+      {p.description && (
+        <p className="text-sm text-gray-600 mt-1 mb-2 line-clamp-3">{p.description}</p>
+      )}
+
+      {/* Mensagens especiais */}
+      {category === "pizza" && (
+        <p className="mt-2 text-red-600 font-bold text-sm">Escolha os sabores 🍕</p>
+      )}
+      {category === "hamburguer" && p.montar && (
+        <p className="mt-2 text-green-600 font-bold text-sm">Monte seu Hambúrguer 🍔</p>
+      )}
+      {category === "pastel" && p.montar && (
+        <p className="mt-2 text-blue-600 font-bold text-sm">Monte seu Pastel 🥟</p>
+      )}
+
+      {/* Tamanhos */}
+      {sizes.length > 0 && category !== "pizza" && (
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {sizes.map(([size, price], idx) => (
+            <motion.button
+              key={`${p.id || p.name || "produto"}-size-${idx}`}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setSelectedSize(size)}
+              className={`px-3 py-1 rounded-full border text-sm transition ${
+                selectedSize === size
+                  ? "bg-yellow-500 text-white border-yellow-600"
+                  : "bg-gray-100 hover:bg-gray-200"
+              }`}
+            >
+              {size} - {formatPreco(parsePreco(price))}
+            </motion.button>
+          ))}
+        </div>
+      )}
+
+      {/* Preço */}
+      <p className="mt-3 font-bold text-lg text-gray-800">{priceToShow}</p>
+
+      {/* Botão principal */}
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={handleAdd}
+        className={`mt-auto w-full flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-base font-semibold shadow transition
+          ${
+            category === "pizza" ||
+            (category === "hamburguer" && p.montar) ||
+            (category === "pastel" && p.montar)
+              ? "bg-red-600 hover:bg-red-700 text-white"
+              : "bg-green-600 hover:bg-green-700 text-white"
+          }`}
+      >
+        <FaPlus />
+        {category === "pizza"
+          ? "Montar Pizza"
+          : category === "hamburguer"
+          ? p.montar
+            ? "Montar Hambúrguer"
+            : "Adicionar ao Carrinho"
+          : category === "pastel"
+          ? p.montar
+            ? "Montar Pastel"
+            : "Adicionar ao Carrinho"
+          : "Adicionar ao Carrinho"}
+      </motion.button>
     </motion.div>
   );
 }
