@@ -26,12 +26,19 @@ function parsePreco(value) {
 
 export default function OrdersAdmin() {
   const [orders, setOrders] = useState([]);
-  const [soundEnabled, setSoundEnabled] = useState(
-    localStorage.getItem("soundEnabled") === "true"
-  );
+  const [soundEnabled, setSoundEnabled] = useState(false); // inicia estável
   const audioRef = useRef(null);
   const prevIdsRef = useRef([]);
 
+  // 🔹 Carregar preferências do som ao montar
+  useEffect(() => {
+    const pref = localStorage.getItem("soundEnabled");
+    if (pref !== null) {
+      setSoundEnabled(pref === "true");
+    }
+  }, []);
+
+  // 🔹 Snapshot dos pedidos
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -49,9 +56,9 @@ export default function OrdersAdmin() {
         toast.success("📦 Novo pedido recebido!");
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
-          audioRef.current
-            .play()
-            .catch((err) => console.error("Erro ao tocar áudio:", err));
+          audioRef.current.play().catch((err) =>
+            console.error("Erro ao tocar áudio:", err)
+          );
         }
       }
 
@@ -62,15 +69,10 @@ export default function OrdersAdmin() {
   }, [soundEnabled]);
 
   const toggleSound = () => {
-    if (soundEnabled) {
-      setSoundEnabled(false);
-      localStorage.setItem("soundEnabled", "false");
-      toast("🔕 Som desativado");
-    } else {
-      setSoundEnabled(true);
-      localStorage.setItem("soundEnabled", "true");
-      toast.success("🔔 Notificações sonoras ativadas!");
-    }
+    const newValue = !soundEnabled;
+    setSoundEnabled(newValue);
+    localStorage.setItem("soundEnabled", newValue.toString());
+    toast(newValue ? "🔔 Notificações sonoras ativadas!" : "🔕 Som desativado");
   };
 
   const updateStatus = async (id, status) => {
@@ -160,7 +162,11 @@ export default function OrdersAdmin() {
             ${item.name} ${item.size ? `(${item.size})` : ""}
             ${item.flavors ? `<br/>🍕 ${item.flavors.join(" / ")}` : ""}
             ${item.crust ? `<br/>🍞 ${item.crust.nome}</p>` : ""}
-            ${item.addons?.length ? `<br/>➕ ${item.addons.map((a) => a.nome).join(", ")}` : ""}
+            ${
+              item.addons?.length
+                ? `<br/>➕ ${item.addons.map((a) => a.nome).join(", ")}`
+                : ""
+            }
           </td>
           <td style="text-align:right;">R$ ${(parsePreco(item.price) * (item.qty || 1)).toFixed(2)}</td>
         </tr>
@@ -237,7 +243,9 @@ export default function OrdersAdmin() {
               soundEnabled ? "bg-green-500 text-white" : "bg-gray-400 text-white"
             }`}
           >
-            {soundEnabled ? <FiBell /> : <FiBellOff />}
+            <span className="inline-flex items-center">
+              {soundEnabled ? <FiBell key="bell" /> : <FiBellOff key="bellOff" />}
+            </span>
             {soundEnabled ? "Som Ativado" : "Som Desativado"}
           </button>
         </div>
@@ -258,9 +266,7 @@ export default function OrdersAdmin() {
             </div>
             <div className="p-4 rounded-xl bg-purple-100 text-purple-800 shadow-sm sm:col-span-2 lg:col-span-1">
               <p className="text-sm">Faturamento</p>
-              <p className="text-2xl font-bold">
-                R$ {valorTotalHoje.toFixed(2)}
-              </p>
+              <p className="text-2xl font-bold">R$ {valorTotalHoje.toFixed(2)}</p>
             </div>
             <div className="p-4 rounded-xl bg-pink-100 text-pink-800 shadow-sm sm:col-span-2 lg:col-span-1">
               <p className="text-sm">Ticket Médio</p>
@@ -300,8 +306,12 @@ export default function OrdersAdmin() {
 
                     {/* 🔹 Dados extras */}
                     <p className="text-sm text-gray-600">📱 {o.phone || "-"}</p>
-                    <p className="text-sm text-gray-600">🏠 {o.address || "Endereço não informado"}</p>
-                    <p className="text-sm text-gray-600">💳 {o.paymentMethod || "-"}</p>
+                    <p className="text-sm text-gray-600">
+                      🏠 {o.address || "Endereço não informado"}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      💳 {o.paymentMethod || "-"}
+                    </p>
                     {o.observacao && (
                       <p className="text-sm text-red-600 font-semibold">
                         📝 {o.observacao}
@@ -312,7 +322,8 @@ export default function OrdersAdmin() {
                     <div className="mt-2 text-sm text-gray-700">
                       {(o.items || []).map((item, idx) => (
                         <div key={idx} className="border-t pt-1 mt-1">
-                          {item.qty}x {item.name} {item.size ? `(${item.size})` : ""}
+                          {item.qty}x {item.name}{" "}
+                          {item.size ? `(${item.size})` : ""}
                         </div>
                       ))}
                     </div>
