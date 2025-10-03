@@ -12,6 +12,7 @@
   "dependencies": {
     "@cloudinary/react": "^1.14.3",
     "@cloudinary/url-gen": "^1.22.0",
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@hello-pangea/dnd": "^18.0.1",
     "@tailwindcss/vite": "^4.1.13",
     "firebase": "^12.3.0",

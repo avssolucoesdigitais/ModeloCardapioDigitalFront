@@ -3,17 +3,20 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Configuração do Firebase
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBpBVNv93rvcEe-brq-8F-sdczhZ5Agmtw",
-  authDomain: "cardapio-c5695.firebaseapp.com",
-  projectId: "cardapio-c5695",
-  storageBucket: "cardapio-c5695.firebasestorage.app",
-  messagingSenderId: "733934320699",
-  appId: "1:733934320699:web:5b8eb2156145327e08701e"
+  apiKey: "AIzaSyAxxFKIFkvinNvA4WljPMQX66wbZtz8H78",
+  authDomain: "cardapio01-8afbd.firebaseapp.com",
+  projectId: "cardapio01-8afbd",
+  storageBucket: "cardapio01-8afbd.firebasestorage.app",
+  messagingSenderId: "1053119908233",
+  appId: "1:1053119908233:web:2bae1e88ca94190db83958"
 };
 
-// Inicializa o app
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // Exporta os serviços
