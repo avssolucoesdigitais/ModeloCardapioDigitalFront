@@ -121,12 +121,7 @@ export default function Login() {
         </form>
 
         {/* botão fora do form */}
-        <button
-          onClick={() => navigate("/c")}
-          className="mt-4 w-full max-w-sm bg-gray-200 text-black py-2 rounded hover:bg-gray-300 transition"
-        >
-          Voltar ao carrinho
-        </button>
+       
       </main>
 
       {/* 🔹 Footer fixo */}

@@ -181,20 +181,28 @@ export default function Cardapio() {
       : [];
 
   // ---------- AGRUPAMENTO ----------
-  const groupedProducts = products
-    .filter(
-      (p) =>
-        p.available !== false &&
-        (activeCategory === "Todas" || p.category === activeCategory) &&
-        (p.name || "").toLowerCase().includes(search.toLowerCase())
-    )
-    .reduce((acc, p) => {
-      const group =
-        activeCategory === "Todas" ? p.category || "Outros" : p.subCategory || "Outros";
-      if (!acc[group]) acc[group] = [];
-      acc[group].push(p);
-      return acc;
-    }, {});
+const groupedProducts = products
+  .filter(
+    (p) =>
+      p.available !== false &&
+      (activeCategory === "Todas" || p.category === activeCategory) &&
+      (p.name || "").toLowerCase().includes(search.toLowerCase())
+  )
+  .reduce((acc, p) => {
+    const group =
+      activeCategory === "Todas" ? p.category || "Outros" : p.subCategory || "Outros";
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(p);
+    return acc;
+  }, {});
+
+// Ordena os grupos → "Promocao" sempre primeiro
+const orderedGroups = Object.entries(groupedProducts).sort(([a], [b]) => {
+  if (a.toLowerCase() === "promocao") return -1;
+  if (b.toLowerCase() === "promocao") return 1;
+  return 0;
+});
+
 
   // ---------- ADICIONAR AO CARRINHO ----------
   const makeOnAdd = (p) => (itemFromCard) => {
@@ -305,7 +313,8 @@ export default function Cardapio() {
         {/* Produtos */}
         <div className="w-full max-w-7xl mx-auto space-y-10">
           {Object.keys(groupedProducts).length > 0 ? (
-            Object.entries(groupedProducts).map(([group, items]) => (
+            orderedGroups.map(([group, items]) => (
+
               <div key={group}>
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-5 border-b pb-2">
                   {group}

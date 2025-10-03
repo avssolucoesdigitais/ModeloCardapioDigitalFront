@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { useState } from "react";
 import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut } from "react-icons/fi";
-import { FaPizzaSlice } from "react-icons/fa";
+import { FaPizzaSlice, FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
 
 export default function AdminLayout() {
   const location = useLocation();
@@ -66,6 +66,39 @@ export default function AdminLayout() {
             </Link>
           ))}
         </nav>
+
+        {/* Contato com suporte */}
+        <div className="px-4 py-4 border-t border-[#1A2E50] flex flex-col items-center gap-3 text-lg">
+          <div className="flex gap-4">
+            <a
+              href="https://www.instagram.com/sasp_dev/?next=%2F"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-pink-400 transition"
+            >
+              <FaInstagram />
+            </a>
+            <a
+              href="https://www.linkedin.com/in/sanderley-santos-681918211"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-blue-400 transition"
+            >
+              <FaLinkedin />
+            </a>
+            <a
+              href="https://wa.me/5588981356668"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-green-400 transition"
+            >
+              <FaWhatsapp />
+            </a>
+          </div>
+          <p className="text-xs font-medium text-center">
+            Entre em contato com a equipe de suporte
+          </p>
+        </div>
 
         {/* Botão de sair */}
         <div className="px-4 py-6 border-t border-[#1A2E50]">
