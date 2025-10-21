@@ -44,6 +44,10 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
   const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // ===== NOVO: CUPOM =====
+  const [cupom, setCupom] = useState("");
+  const [desconto, setDesconto] = useState(0);
+
   const itensCarrinho = cart.items || [];
 
   const subtotal = useMemo(() => {
@@ -61,7 +65,10 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
   const total = subtotal + taxaEntrega;
 
-  // carregar cadastro salvo
+  // ===== NOVO: total com desconto =====
+  const totalComDesconto = total - desconto;
+
+  // Carregar cadastro salvo
   useEffect(() => {
     const savedPhone = localStorage.getItem("userPhone");
     if (!savedPhone) return;
@@ -87,6 +94,16 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
     loadUser();
   }, []);
+
+  // ===== NOVO: validar cupom =====
+  useEffect(() => {
+    if (!cupom.trim() || !config?.cupons) return setDesconto(0);
+    const c = config.cupons.find(
+      (c) => c.codigo.toLowerCase() === cupom.trim().toLowerCase()
+    );
+    if (c) setDesconto(parseFloat(c.valor));
+    else setDesconto(0);
+  }, [cupom, config]);
 
   if (!open) return null;
 
@@ -148,7 +165,8 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         items: itensCarrinho,
         subtotal,
         taxaEntrega,
-        total,
+        desconto, // cupom aplicado
+        total: totalComDesconto, // total com desconto
         observacao,
         status: "PENDENTE",
         createdAt: new Date().toISOString(),
@@ -163,7 +181,8 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         sanitize({
           orderNumber,
           items: itensCarrinho,
-          total,
+          total: totalComDesconto,
+          desconto,
           status: "PENDENTE",
           createdAt: new Date().toISOString(),
         }),
@@ -189,6 +208,10 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         msg += `📝 Observações: ${observacao}%0A`;
       }
 
+      if (desconto > 0) {
+        msg += `🎟️ Cupom: ${cupom} - Desconto: R$ ${desconto.toFixed(2)}%0A`;
+      }
+
       msg += `%0A*Itens:*%0A`;
       itensCarrinho.forEach((item) => {
         const qty = item?.qty ?? 0;
@@ -202,7 +225,8 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         }
         if (item.crust) {
           msg += `   Borda: ${item.crust.nome}`;
-          if (parsePreco(item.crust.preco) > 0) msg += ` (+${formatPreco(item.crust.preco)})`;
+          if (parsePreco(item.crust.preco) > 0)
+            msg += ` (+${formatPreco(item.crust.preco)})`;
           msg += `%0A`;
         }
         if (Array.isArray(item.addons) && item.addons.length > 0) {
@@ -217,7 +241,10 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
       if (entrega === "entrega") {
         msg += `🚚 Taxa de entrega: ${formatPreco(taxaEntrega)}%0A`;
       }
-      msg += `✅ Total: ${formatPreco(total)}`;
+      if (desconto > 0) {
+        msg += `💸 Desconto aplicado: ${formatPreco(desconto)}%0A`;
+      }
+      msg += `✅ Total: ${formatPreco(totalComDesconto)}`;
 
       let adminPhone = "558999999999";
       if (typeof whatsapp === "string" && whatsapp.trim()) {
@@ -256,8 +283,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
               )}
               {item.addons?.length > 0 && (
                 <div>
-                  ➕ Adicionais:{" "}
-                  {item.addons.map((a) => `${a.nome} (${formatPreco(a.preco)})`).join(", ")}
+                  ➕ Adicionais: {item.addons.map((a) => `${a.nome} (${formatPreco(a.preco)})`).join(", ")}
                 </div>
               )}
               <div>💵 Preço unitário: {formatPreco(item.price)}</div>
@@ -265,11 +291,28 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
           ))}
         </div>
 
+        {/* Cupom */}
+        <label className="block mb-3">
+          <span className="text-sm text-gray-600">Cupom de desconto (opcional)</span>
+          <input
+            type="text"
+            className="mt-1 w-full border rounded-lg px-3 py-2"
+            value={cupom}
+            onChange={(e) => setCupom(e.target.value)}
+          />
+        </label>
+        {desconto > 0 && (
+          <div className="text-sm text-green-600 mb-3">
+            ✅ Cupom aplicado! Desconto de R$ {desconto.toFixed(2)}
+          </div>
+        )}
+
         {/* Totais */}
         <div className="text-sm text-gray-600 mb-3">
           <div>Subtotal: {formatPreco(subtotal)}</div>
           <div>Taxa de entrega: {formatPreco(taxaEntrega)}</div>
-          <div className="font-semibold">Total: {formatPreco(total)}</div>
+          {desconto > 0 && <div>Desconto: {formatPreco(desconto)}</div>}
+          <div className="font-semibold">Total: {formatPreco(totalComDesconto)}</div>
         </div>
 
         {/* Formulário */}

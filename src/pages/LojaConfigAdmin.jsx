@@ -48,6 +48,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     whatsapp: "",
     instagram: "",
     bairros: [],
+    cupons: [], // Novo campo para cupons
     horarios: {
       domingo: { abre: "", fecha: "" },
       segunda: { abre: "", fecha: "" },
@@ -62,6 +63,10 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   const [saving, setSaving] = useState(false);
   const [bairroNome, setBairroNome] = useState("");
   const [bairroTaxa, setBairroTaxa] = useState("");
+
+  // Campos para cupons
+  const [novoCupomCodigo, setNovoCupomCodigo] = useState("");
+  const [novoCupomValor, setNovoCupomValor] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -89,6 +94,7 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     }
   };
 
+  // Bairros
   const handleAddBairro = async () => {
     if (!bairroNome || !bairroTaxa)
       return toast.error("⚠️ Preencha todos os campos!");
@@ -115,6 +121,33 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
     const ref = doc(db, "lojas", lojaId, "config", "principal");
     await setDoc(ref, { ...config }, { merge: true });
     toast.success("⏰ Horários salvos!");
+  };
+
+  // Cupons
+  const handleAddCupom = async () => {
+    if (!novoCupomCodigo || !novoCupomValor) {
+      return toast.error("⚠️ Preencha todos os campos do cupom!");
+    }
+    const novos = [...config.cupons, {
+      codigo: novoCupomCodigo.trim(),
+      valor: Number(novoCupomValor),
+    }];
+    const ref = doc(db, "lojas", lojaId, "config", "principal");
+    await setDoc(ref, { ...config, cupons: novos }, { merge: true });
+    setConfig((prev) => ({ ...prev, cupons: novos }));
+    setNovoCupomCodigo("");
+    setNovoCupomValor("");
+    toast.success("🎟️ Cupom adicionado!");
+  };
+
+  const handleDeleteCupom = async (codigo) => {
+    if (confirm("Excluir cupom?")) {
+      const novos = config.cupons.filter((c) => c.codigo !== codigo);
+      const ref = doc(db, "lojas", lojaId, "config", "principal");
+      await setDoc(ref, { ...config, cupons: novos }, { merge: true });
+      setConfig((prev) => ({ ...prev, cupons: novos }));
+      toast.success("🗑️ Cupom excluído!");
+    }
   };
 
   if (loading) return <p>Carregando...</p>;
@@ -146,127 +179,165 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       </div>
 
       {/* Aba Loja */}
-{activeTab === "loja" && (
-  <section className="bg-white rounded-xl shadow-md p-6 space-y-6">
-    {/* Nome + Instagram */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <input
-        type="text"
-        placeholder="Nome da Loja"
-        value={config.nomeLoja}
-        onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
-        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
-      />
-
-      <input
-        type="text"
-        placeholder="Instagram (ex: https://instagram.com/daypizza)"
-        value={config.instagram}
-        onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
-        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
-      />
-    </div>
-
-    {/* Uploads */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Logo */}
-      <div className="space-y-2">
-        <label className="block font-semibold">Logo:</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const url = await uploadToCloudinary(file);
-            setConfig({ ...config, logoUrl: url });
-          }}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
-                     file:rounded-lg file:border-0 file:text-sm file:font-semibold
-                     file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-        />
-        {config.logoUrl && (
-          <div className="mt-2 flex flex-col items-start gap-2">
-            <img src={config.logoUrl} alt="Logo" className="h-16 rounded border" />
-            <button
-              onClick={() => setConfig({ ...config, logoUrl: "" })}
-              className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
-            >
-              Remover
-            </button>
+      {activeTab === "loja" && (
+        <section className="bg-white rounded-xl shadow-md p-6 space-y-6">
+          {/* Nome + Instagram */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="Nome da Loja"
+              value={config.nomeLoja}
+              onChange={(e) => setConfig({ ...config, nomeLoja: e.target.value })}
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
+            />
+            <input
+              type="text"
+              placeholder="Instagram (ex: https://instagram.com/daypizza)"
+              value={config.instagram}
+              onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
+            />
           </div>
-        )}
-      </div>
 
-      {/* Banner */}
-      <div className="space-y-2">
-        <label className="block font-semibold">Banner:</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const url = await uploadToCloudinary(file);
-            setConfig({ ...config, bannerUrl: url });
-          }}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
-                     file:rounded-lg file:border-0 file:text-sm file:font-semibold
-                     file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-        />
-        {config.bannerUrl && (
-          <div className="mt-2 flex flex-col items-start gap-2">
-            <img src={config.bannerUrl} alt="Banner" className="h-24 rounded border" />
-            <button
-              onClick={() => setConfig({ ...config, bannerUrl: "" })}
-              className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
-            >
-              Remover
-            </button>
+          {/* Uploads */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Logo */}
+            <div className="space-y-2">
+              <label className="block font-semibold">Logo:</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const url = await uploadToCloudinary(file);
+                  setConfig({ ...config, logoUrl: url });
+                }}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                           file:rounded-lg file:border-0 file:text-sm file:font-semibold
+                           file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {config.logoUrl && (
+                <div className="mt-2 flex flex-col items-start gap-2">
+                  <img src={config.logoUrl} alt="Logo" className="h-16 rounded border" />
+                  <button
+                    onClick={() => setConfig({ ...config, logoUrl: "" })}
+                    className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                  >
+                    Remover
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Banner */}
+            <div className="space-y-2">
+              <label className="block font-semibold">Banner:</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const url = await uploadToCloudinary(file);
+                  setConfig({ ...config, bannerUrl: url });
+                }}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                           file:rounded-lg file:border-0 file:text-sm file:font-semibold
+                           file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {config.bannerUrl && (
+                <div className="mt-2 flex flex-col items-start gap-2">
+                  <img src={config.bannerUrl} alt="Banner" className="h-24 rounded border" />
+                  <button
+                    onClick={() => setConfig({ ...config, bannerUrl: "" })}
+                    className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                  >
+                    Remover
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    </div>
 
-    {/* Cores */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <label className="flex items-center justify-between border rounded-lg p-2">
-        <span className="font-medium">Cor primária:</span>
-        <input
-          type="color"
-          value={config.primaryColor}
-          onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
-        />
-      </label>
-      <label className="flex items-center justify-between border rounded-lg p-2">
-        <span className="font-medium">Cor secundária:</span>
-        <input
-          type="color"
-          value={config.secondaryColor}
-          onChange={(e) => setConfig({ ...config, secondaryColor: e.target.value })}
-        />
-      </label>
-    </div>
+          {/* Cores */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex items-center justify-between border rounded-lg p-2">
+              <span className="font-medium">Cor primária:</span>
+              <input
+                type="color"
+                value={config.primaryColor}
+                onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
+              />
+            </label>
+            <label className="flex items-center justify-between border rounded-lg p-2">
+              <span className="font-medium">Cor secundária:</span>
+              <input
+                type="color"
+                value={config.secondaryColor}
+                onChange={(e) => setConfig({ ...config, secondaryColor: e.target.value })}
+              />
+            </label>
+          </div>
 
-    {/* WhatsApp */}
-    <input
-      type="text"
-      placeholder="WhatsApp (ex: 5588981356668)"
-      value={config.whatsapp}
-      onChange={(e) => setConfig({ ...config, whatsapp: e.target.value })}
-      className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
-    />
+          {/* WhatsApp */}
+          <input
+            type="text"
+            placeholder="WhatsApp (ex: 5588981356668)"
+            value={config.whatsapp}
+            onChange={(e) => setConfig({ ...config, whatsapp: e.target.value })}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full"
+          />
 
-    <button
-      onClick={saveConfig}
-      disabled={saving}
-      className="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg font-semibold hover:opacity-90 transition"
-    >
-      {saving ? "Salvando..." : "Salvar Configuração"}
-    </button>
-  </section>
-)}
+          {/* Cupons */}
+          <div className="space-y-4 mt-4">
+            <h3 className="font-semibold">Cupons de desconto</h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Código do cupom (ex: #DESCONTO5)"
+                value={novoCupomCodigo}
+                onChange={(e) => setNovoCupomCodigo(e.target.value)}
+                className="border rounded px-2 py-1 flex-1"
+              />
+              <input
+                type="number"
+                placeholder="Valor desconto"
+                value={novoCupomValor}
+                onChange={(e) => setNovoCupomValor(e.target.value)}
+                className="border rounded px-2 py-1 w-32"
+              />
+              <button
+                onClick={handleAddCupom}
+                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+              >
+                +
+              </button>
+            </div>
+            <ul className="mt-2 divide-y">
+              {config.cupons?.map((c, idx) => (
+                <li key={idx} className="flex justify-between items-center py-1 text-gray-700">
+                  <span>{c.codigo} — R$ {c.valor.toFixed(2).replace(".", ",")}</span>
+                  <button
+                    onClick={() => handleDeleteCupom(c.codigo)}
+                    className="text-red-600 font-semibold hover:text-red-800"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
 
+          <button
+            onClick={saveConfig}
+            disabled={saving}
+            className="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white rounded-lg font-semibold hover:opacity-90 transition"
+          >
+            {saving ? "Salvando..." : "Salvar Configuração"}
+          </button>
+        </section>
+      )}
 
       {/* Aba Bairros */}
       {activeTab === "bairros" && (
