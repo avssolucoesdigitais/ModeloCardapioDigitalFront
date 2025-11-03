@@ -72,7 +72,7 @@ export default function PainelCalzone() {
 
       {/* Lista de Calzones */}
       <div className="bg-white rounded-xl shadow-md p-4 space-y-6">
-        <h3 className="text-lg font-bold">🥟 Calzones Cadastrados</h3>
+        <h3 className="text-lg font-bold"> Calzones Cadastrados</h3>
 
         {docData.produtos?.length > 0 ? (
           docData.produtos.map((p, idx) => (

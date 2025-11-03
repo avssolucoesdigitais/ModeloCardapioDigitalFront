@@ -102,7 +102,7 @@ export default function PainelBatata() {
 
       {/* Formulário Batata */}
       <section className="border p-4 rounded-md bg-gray-50 space-y-3">
-        <h2 className="text-xl font-bold mb-2">🍟 Batata</h2>
+        <h2 className="text-xl font-bold mb-2">Batata</h2>
         <input
           placeholder="Nome"
           value={novoProduto.nome}

@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LojaConfigAdmin from "./pages/LojaConfigAdmin";
 import AdminLayout from "./components/adminLayout";
 
+
 function App() {
   return (
     <Router>

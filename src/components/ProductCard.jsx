@@ -18,8 +18,8 @@ function formatPreco(valor) {
 
 export default function ProductCard({ p, onAdd }) {
   const [selectedSize, setSelectedSize] = useState("");
-  const [selectedAddons, setSelectedAddons] = useState([]);
-  const [qty, setQty] = useState(1);
+  const [selectedAddons] = useState([]);
+  const [qty] = useState(1);
 
   const sizes = useMemo(() => {
     if (!p.prices) return [];
@@ -50,20 +50,27 @@ export default function ProductCard({ p, onAdd }) {
 
   // ---------- ADICIONAR ----------
   const handleAdd = () => {
+    // Pastel montável exige tamanho já no card
     if (category === "pastel" && p.montar && !selectedSize) {
       alert("Escolha um tamanho para o pastel antes de continuar!");
       return;
     }
+    // Marmita montável não exige nada no card — o modal resolve os passos
     addToCart();
   };
 
   const addToCart = () => {
     let price;
 
-    if ((category === "hamburguer" && p.montar) || (category === "pastel" && p.montar)) {
-      // Montáveis
+    // Itens montáveis (hambúrguer/pastel/marmita) — o Cardápio pode abrir o modal
+    if (
+      (category === "hamburguer" && p.montar) ||
+      (category === "pastel" && p.montar) ||
+      (category === "marmita" && p.montar)
+    ) {
       price = calculateTotalPrice();
     } else if (category === "hamburguer" && !p.montar) {
+      // Hambúrguer pronto
       price = parsePreco(p.preco);
     } else if (sizes.length === 1) {
       price = parsePreco(p.prices[Object.keys(p.prices)[0]]);
@@ -88,16 +95,32 @@ export default function ProductCard({ p, onAdd }) {
 
   // ---------- PREÇO EXIBIDO ----------
   const priceToShow = (() => {
+    // Pastel montável: exige tamanho visível no card
     if (category === "pastel" && p.montar) {
       return selectedSize
         ? formatPreco(parsePreco(p.prices[selectedSize]))
         : "Selecione um tamanho";
     }
+
+    // Marmita montável: se houver tabela de preços, mostra "A partir de R$ ..."
+    if (category === "marmita" && p.montar) {
+      if (sizes.length > 0) {
+        const min = Math.min(
+          ...sizes.map(([, price]) => parsePreco(price)).filter((n) => !Number.isNaN(n))
+        );
+        return `A partir de ${formatPreco(min)}`;
+      }
+      return "Monte sua Marmita";
+    }
+
+    // Demais casos com tabela de tamanhos
     if (sizes.length > 0) {
       return selectedSize
         ? formatPreco(parsePreco(p.prices[selectedSize]))
         : "Selecione um tamanho";
     }
+
+    // Preço único
     return formatPreco(parsePreco(p.preco || p.prices?.único));
   })();
 
@@ -129,16 +152,17 @@ export default function ProductCard({ p, onAdd }) {
 
       {/* Mensagens especiais */}
       {category === "pizza" && (
-        <p className="mt-2 text-red-600 font-bold text-sm">Escolha os sabores 🍕</p>
+        <p className="mt-2 text-red-600 font-bold text-sm">Escolha os sabores </p>
       )}
       {category === "hamburguer" && p.montar && (
-        <p className="mt-2 text-green-600 font-bold text-sm">Monte seu Hambúrguer 🍔</p>
+        <p className="mt-2 text-green-600 font-bold text-sm">Monte seu Hambúrguer </p>
       )}
       {category === "pastel" && p.montar && (
-        <p className="mt-2 text-blue-600 font-bold text-sm">Monte seu Pastel 🥟</p>
+        <p className="mt-2 text-blue-600 font-bold text-sm">Monte seu Pastel </p>
       )}
+      
 
-      {/* Tamanhos */}
+      {/* Tamanhos (não mostramos para Pizza; Marmita só se o produto tiver prices próprios) */}
       {sizes.length > 0 && category !== "pizza" && (
         <div className="flex gap-2 mt-2 flex-wrap">
           {sizes.map(([size, price], idx) => (
@@ -169,7 +193,7 @@ export default function ProductCard({ p, onAdd }) {
           ${
             category === "pizza" ||
             (category === "hamburguer" && p.montar) ||
-            (category === "pastel" && p.montar)
+            (category === "pastel" && p.montar) 
               ? "bg-red-600 hover:bg-red-700 text-white"
               : "bg-green-600 hover:bg-green-700 text-white"
           }`}

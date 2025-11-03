@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
+/* ======================================================
+   MODAL DE MONTAGEM DE PIZZA
+   ====================================================== */
 export default function PizzaBuilderModal({
   open,
   onClose,
@@ -10,13 +15,13 @@ export default function PizzaBuilderModal({
 }) {
   const [step, setStep] = useState(1);
   const [size, setSize] = useState("");
-  const [tipo, setTipo] = useState("inteira"); // inteira | meio
+  const [tipo, setTipo] = useState("inteira");
   const [sabores, setSabores] = useState([]);
   const [selectedBorda, setSelectedBorda] = useState(null);
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [qty, setQty] = useState(1);
 
-  // ---------- listas ----------
+  /* ---------- Listas calculadas ---------- */
   const pizzas = useMemo(
     () =>
       products.filter(
@@ -60,7 +65,7 @@ export default function PizzaBuilderModal({
   const precoBorda = selectedBorda ? Number(selectedBorda.preco || 0) : 0;
   const total = (precoBase + precoAddons + precoBorda) * qty;
 
-  // ---------- reset ao abrir ----------
+  /* ---------- Efeitos ---------- */
   useEffect(() => {
     if (!open) return;
     setStep(1);
@@ -77,7 +82,6 @@ export default function PizzaBuilderModal({
     setSize(presetSize || onlyOne || "");
   }, [open, baseProduct, preset]);
 
-  // aplica 1º sabor: preset.firstFlavorId OU fallback baseProduct.id
   useEffect(() => {
     if (!open) return;
     const initialFlavorId = preset?.firstFlavorId ?? baseProduct?.id ?? null;
@@ -92,14 +96,13 @@ export default function PizzaBuilderModal({
   const pinnedFirstId =
     tipo === "meio" ? (preset?.firstFlavorId ?? baseProduct?.id ?? null) : null;
 
-  // ---------- seleção de sabores ----------
+  /* ---------- Manipuladores ---------- */
   const handleToggleSabor = (sabor) => {
     if (tipo === "inteira") {
       setSabores([sabor]);
       return;
     }
 
-    // meio a meio
     const exists = sabores.find((s) => s.id === sabor.id);
     if (exists) {
       if (pinnedFirstId && sabor.id === pinnedFirstId) return;
@@ -112,13 +115,7 @@ export default function PizzaBuilderModal({
       return;
     }
 
-    if (sabores.some((s) => s.id === sabor.id)) return;
-
     setSabores([...sabores, sabor]);
-  };
-
-  const handleNextFromStep1 = () => {
-    setStep(2); // sempre vai para seleção de sabores
   };
 
   const handleConfirm = () => {
@@ -129,7 +126,7 @@ export default function PizzaBuilderModal({
       return alert("Escolha os 2 sabores!");
 
     const item = {
-      id: `pizza-${tipo}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `pizza-${tipo}-${Date.now()}`,
       name:
         tipo === "inteira"
           ? sabores[0].name
@@ -153,16 +150,18 @@ export default function PizzaBuilderModal({
     onClose();
   };
 
-  // ---------- UI ----------
   const StepBadge = ({ idx, label }) => (
     <div
       className={`flex items-center gap-2 ${
-        step === idx ? "font-semibold" : "opacity-70"
+        step === idx ? "font-semibold text-blue-600" : "text-gray-500"
       }`}
     >
       <span
-        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs
-        ${step === idx ? "bg-yellow-500 text-white" : "bg-gray-200"}`}
+        className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium ${
+          step === idx
+            ? "bg-blue-600 text-white"
+            : "bg-gray-200 text-gray-600"
+        }`}
       >
         {idx}
       </span>
@@ -170,331 +169,413 @@ export default function PizzaBuilderModal({
     </div>
   );
 
+  /* ======================================================
+     UI
+     ====================================================== */
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl
-                      max-h-[80vh] overflow-y-auto p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold">🍕 Montar Pizza</h2>
-          <button
-            onClick={onClose}
-            className="text-sm text-gray-500 hover:underline"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 150, damping: 20 }}
+            className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl 
+                      max-h-[85vh] overflow-y-auto p-5 sm:p-6"
           >
-            Fechar
-          </button>
-        </div>
-
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
-          <StepBadge idx={1} label="Tamanho" />
-          <StepBadge idx={2} label="Sabores" />
-          <StepBadge idx={3} label="Borda" />
-          <StepBadge idx={4} label="Adicionais" />
-          <StepBadge idx={5} label="Resumo" />
-        </div>
-
-        {/* Step 1 - Tamanho + tipo */}
-        {step === 1 && (
-          <>
-            <select
-              className="w-full border p-2 rounded mb-3"
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-            >
-              <option value="">Escolha o tamanho</option>
-              {Object.entries(baseProduct.prices || {}).map(([s, val]) => (
-                <option key={s} value={s}>
-                  {s} — R$ {Number(val).toFixed(2)}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex gap-3 mb-3">
-              <label
-                className={`flex-1 px-3 py-2 border rounded-lg text-center cursor-pointer ${
-                  tipo === "inteira" ? "bg-yellow-500 text-white" : ""
-                }`}
-              >
-                <input
-                  type="radio"
-                  className="hidden"
-                  checked={tipo === "inteira"}
-                  onChange={() => setTipo("inteira")}
-                />
-                Inteira
-              </label>
-              <label
-                className={`flex-1 px-3 py-2 border rounded-lg text-center cursor-pointer ${
-                  tipo === "meio" ? "bg-yellow-500 text-white" : ""
-                }`}
-              >
-                <input
-                  type="radio"
-                  className="hidden"
-                  checked={tipo === "meio"}
-                  onChange={() => setTipo("meio")}
-                />
-                Meio a Meio
-              </label>
-            </div>
-
-            <button
-              onClick={handleNextFromStep1}
-              disabled={!size}
-              className="w-full bg-yellow-500 disabled:opacity-50 text-white py-2 rounded-lg mt-2"
-            >
-              Próximo
-            </button>
-          </>
-        )}
-
-        {/* Step 2 - Sabores */}
-        {step === 2 && (
-          <>
-            <h3 className="font-semibold mb-2">
-              {tipo === "inteira"
-                ? "Escolha o sabor"
-                : pinnedFirstId
-                ? "Escolha o 2º sabor"
-                : "Escolha os 2 sabores"}
-            </h3>
-
-            {sabores.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {sabores.map((s) => (
-                  <span
-                    key={s.id}
-                    className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs"
-                  >
-                    {s.name}
-                    {pinnedFirstId === s.id && " (fixo)"}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="max-h-60 overflow-y-auto border rounded mb-3 divide-y">
-              {pizzas.map((pz) => {
-                const preco = pz.prices?.[size];
-                if (!preco) return null;
-
-                const selected = sabores.some((s) => s.id === pz.id);
-                const isPinned = tipo === "meio" && pinnedFirstId === pz.id;
-
-                return (
-                  <label
-                    key={pz.id}
-                    className={`flex items-center justify-between gap-2 p-2 cursor-pointer
-                                ${selected ? "bg-yellow-50" : ""} ${
-                      isPinned ? "opacity-70" : ""
-                    }`}
-                    title={isPinned ? "1º sabor já escolhido" : ""}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type={tipo === "inteira" ? "radio" : "checkbox"}
-                        checked={selected}
-                        disabled={isPinned}
-                        onChange={() => handleToggleSabor(pz)}
-                      />
-                      <span>{pz.name}</span>
-                    </div>
-                    <span className="text-sm">
-                      R$ {Number(preco).toFixed(2)}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(1)}
-                className="px-4 py-2 border rounded-lg"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                disabled={
-                  (tipo === "inteira" && sabores.length < 1) ||
-                  (tipo === "meio" && sabores.length < 2)
-                }
-                className="px-4 py-2 bg-yellow-500 disabled:opacity-50 text-white rounded-lg"
-              >
-                Próximo
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Step 3 - Borda */}
-        {step === 3 && (
-          <>
-            <h3 className="font-semibold mb-2">Borda recheada</h3>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <label
-                className={`px-3 py-1 border rounded-full cursor-pointer ${
-                  !selectedBorda ? "bg-yellow-50" : ""
-                }`}
-              >
-                <input
-                  type="radio"
-                  className="hidden"
-                  checked={!selectedBorda}
-                  onChange={() => setSelectedBorda(null)}
-                />
-                Sem borda
-              </label>
-              {bordas.map((b, idx) => (
-                <label
-                  key={idx}
-                  className={`px-3 py-1 border rounded-full cursor-pointer ${
-                    selectedBorda?.nome === b.nome
-                      ? "bg-yellow-500 text-white"
-                      : ""
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    className="hidden"
-                    checked={selectedBorda?.nome === b.nome}
-                    onChange={() => setSelectedBorda(b)}
-                  />
-                  {b.nome} (
-                  {Number(b.preco) > 0
-                    ? `+R$ ${Number(b.preco).toFixed(2)}`
-                    : "Grátis"}
-                  )
-                </label>
-              ))}
-            </div>
-
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(2)}
-                className="px-4 py-2 border rounded-lg"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={() => setStep(4)}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg"
-              >
-                Próximo
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Step 4 - Adicionais */}
-        {step === 4 && (
-          <>
-            <h3 className="font-semibold mb-2">Adicionais</h3>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {extras.map((a, idx) => (
-                <label
-                  key={idx}
-                  className={`px-3 py-1 border rounded-full cursor-pointer ${
-                    selectedAddons.includes(a.nome)
-                      ? "bg-yellow-500 text-white"
-                      : ""
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="hidden"
-                    checked={selectedAddons.includes(a.nome)}
-                    onChange={() =>
-                      setSelectedAddons((prev) =>
-                        prev.includes(a.nome)
-                          ? prev.filter((n) => n !== a.nome)
-                          : [...prev, a.nome]
-                      )
-                    }
-                  />
-                  {a.nome} (+R$ {Number(a.preco).toFixed(2)})
-                </label>
-              ))}
-            </div>
-
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(3)}
-                className="px-4 py-2 border rounded-lg"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={() => setStep(5)}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg"
-              >
-                Próximo
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Step 5 - Resumo */}
-        {step === 5 && (
-          <>
-            <h3 className="font-semibold mb-2">Resumo</h3>
-            <p className="text-sm mb-1">Tamanho: {size}</p>
-            <p className="text-sm mb-1">
-              Sabores:{" "}
-              {tipo === "meio"
-                ? sabores.map((s) => `1/2 ${s.name}`).join(" + ")
-                : sabores.map((s) => s.name).join(" + ")}
-            </p>
-            {selectedBorda && (
-              <p className="text-sm mb-1">
-                Borda: {selectedBorda.nome} (
-                {Number(selectedBorda.preco) > 0
-                  ? `+R$ ${Number(selectedBorda.preco).toFixed(2)}`
-                  : "Grátis"}
-                )
-              </p>
-            )}
-            {selectedAddons.length > 0 && (
-              <p className="text-sm mb-1">
-                Adicionais: {selectedAddons.join(", ")}
-              </p>
-            )}
-            <p className="font-bold text-lg mb-4">
-              Total: R$ {total.toFixed(2)}
-            </p>
-
+            {/* Header */}
             <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                Montar Pizza
+              </h2>
               <button
-                className="w-8 h-8 border rounded-full"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Fechar"
               >
-                -
-              </button>
-              <span>{qty}</span>
-              <button
-                className="w-8 h-8 border rounded-full"
-                onClick={() => setQty((q) => q + 1)}
-              >
-                +
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(4)}
-                className="px-4 py-2 border rounded-lg"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg"
-              >
-                Adicionar ao Carrinho
-              </button>
+            {/* Stepper */}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-5">
+              <StepBadge idx={1} label="Tamanho" />
+              <StepBadge idx={2} label="Sabores" />
+              <StepBadge idx={3} label="Borda" />
+              <StepBadge idx={4} label="Adicionais" />
+              <StepBadge idx={5} label="Resumo" />
             </div>
-          </>
+
+            {/* Conteúdo dinâmico */}
+            <div className="space-y-4">
+              {step === 1 && (
+                <StepTamanho
+                  size={size}
+                  setSize={setSize}
+                  tipo={tipo}
+                  setTipo={setTipo}
+                  baseProduct={baseProduct}
+                  onNext={() => setStep(2)}
+                />
+              )}
+
+              {step === 2 && (
+                <StepSabores
+                  pizzas={pizzas}
+                  tipo={tipo}
+                  pinnedFirstId={pinnedFirstId}
+                  sabores={sabores}
+                  size={size}
+                  onToggle={handleToggleSabor}
+                  onPrev={() => setStep(1)}
+                  onNext={() => setStep(3)}
+                />
+              )}
+
+              {step === 3 && (
+                <StepBorda
+                  bordas={bordas}
+                  selected={selectedBorda}
+                  setSelected={setSelectedBorda}
+                  onPrev={() => setStep(2)}
+                  onNext={() => setStep(4)}
+                />
+              )}
+
+              {step === 4 && (
+                <StepAddons
+                  extras={extras}
+                  selectedAddons={selectedAddons}
+                  setSelectedAddons={setSelectedAddons}
+                  onPrev={() => setStep(3)}
+                  onNext={() => setStep(5)}
+                />
+              )}
+
+              {step === 5 && (
+                <StepResumo
+                  size={size}
+                  tipo={tipo}
+                  sabores={sabores}
+                  selectedBorda={selectedBorda}
+                  selectedAddons={selectedAddons}
+                  total={total}
+                  qty={qty}
+                  setQty={setQty}
+                  onPrev={() => setStep(4)}
+                  onConfirm={handleConfirm}
+                />
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ======================================================
+   Subcomponentes (Steps)
+   ====================================================== */
+
+function StepTamanho({ size, setSize, tipo, setTipo, baseProduct, onNext }) {
+  return (
+    <div>
+      <select
+        className="w-full border rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+        value={size}
+        onChange={(e) => setSize(e.target.value)}
+      >
+        <option value="">Escolha o tamanho</option>
+        {Object.entries(baseProduct.prices || {}).map(([s, val]) => (
+          <option key={s} value={s}>
+            {s} — R$ {Number(val).toFixed(2)}
+          </option>
+        ))}
+      </select>
+
+      <div className="flex gap-3 mb-4">
+        {["inteira", "meio"].map((t) => (
+          <label
+            key={t}
+            className={`flex-1 text-center border rounded-lg py-2 cursor-pointer font-medium transition ${
+              tipo === t
+                ? "bg-blue-600 text-white border-blue-600"
+                : "hover:bg-gray-50"
+            }`}
+          >
+            <input
+              type="radio"
+              className="hidden"
+              checked={tipo === t}
+              onChange={() => setTipo(t)}
+            />
+            {t === "inteira" ? "Inteira" : "Meio a Meio"}
+          </label>
+        ))}
+      </div>
+
+      <button
+        onClick={onNext}
+        disabled={!size}
+        className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+      >
+        Próximo
+      </button>
+    </div>
+  );
+}
+
+function StepSabores({
+  pizzas,
+  tipo,
+  pinnedFirstId,
+  sabores,
+  size,
+  onToggle,
+  onPrev,
+  onNext,
+}) {
+  return (
+    <div>
+      <h3 className="font-semibold mb-2 text-gray-900">
+        {tipo === "inteira"
+          ? "Escolha o sabor"
+          : "Escolha os 2 sabores (meio a meio)"}
+      </h3>
+
+      <div className="max-h-60 overflow-y-auto border rounded-lg divide-y">
+        {pizzas.map((pz) => {
+          const preco = pz.prices?.[size];
+          if (!preco) return null;
+
+          const selected = sabores.some((s) => s.id === pz.id);
+          const isPinned = tipo === "meio" && pinnedFirstId === pz.id;
+
+          return (
+            <label
+              key={pz.id}
+              className={`flex items-center justify-between gap-2 p-2 cursor-pointer ${
+                selected ? "bg-blue-50" : "hover:bg-gray-50"
+              } ${isPinned ? "opacity-60" : ""}`}
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  type={tipo === "inteira" ? "radio" : "checkbox"}
+                  checked={selected}
+                  disabled={isPinned}
+                  onChange={() => onToggle(pz)}
+                />
+                <span className="text-gray-800">{pz.name}</span>
+              </div>
+              <span className="text-sm text-gray-600">
+                R$ {Number(preco).toFixed(2)}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="flex justify-between mt-4">
+        <button onClick={onPrev} className="flex items-center gap-1 border rounded-lg px-3 py-2">
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </button>
+        <button
+          onClick={onNext}
+          disabled={
+            (tipo === "inteira" && sabores.length < 1) ||
+            (tipo === "meio" && sabores.length < 2)
+          }
+          className="flex items-center gap-1 bg-blue-600 text-white rounded-lg px-3 py-2 font-semibold hover:bg-blue-700 disabled:opacity-50"
+        >
+          Próximo <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StepBorda({ bordas, selected, setSelected, onPrev, onNext }) {
+  return (
+    <div>
+      <h3 className="font-semibold mb-3 text-gray-900">Escolha a borda</h3>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <label
+          className={`px-3 py-1 border rounded-full cursor-pointer ${
+            !selected ? "bg-blue-50 border-blue-300" : ""
+          }`}
+        >
+          <input
+            type="radio"
+            className="hidden"
+            checked={!selected}
+            onChange={() => setSelected(null)}
+          />
+          Sem borda
+        </label>
+        {bordas.map((b, idx) => (
+          <label
+            key={idx}
+            className={`px-3 py-1 border rounded-full cursor-pointer ${
+              selected?.nome === b.nome
+                ? "bg-blue-600 text-white border-blue-600"
+                : "hover:bg-gray-50"
+            }`}
+          >
+            <input
+              type="radio"
+              className="hidden"
+              checked={selected?.nome === b.nome}
+              onChange={() => setSelected(b)}
+            />
+            {b.nome} (
+            {Number(b.preco) > 0
+              ? `+R$ ${Number(b.preco).toFixed(2)}`
+              : "Grátis"}
+            )
+          </label>
+        ))}
+      </div>
+
+      <div className="flex justify-between">
+        <button onClick={onPrev} className="border rounded-lg px-3 py-2 flex items-center gap-1">
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </button>
+        <button
+          onClick={onNext}
+          className="bg-blue-600 text-white rounded-lg px-3 py-2 flex items-center gap-1 font-semibold hover:bg-blue-700"
+        >
+          Próximo <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StepAddons({ extras, selectedAddons, setSelectedAddons, onPrev, onNext }) {
+  return (
+    <div>
+      <h3 className="font-semibold mb-3 text-gray-900">Adicionais</h3>
+      <div className="flex flex-wrap gap-2 mb-4">
+        {extras.map((a, idx) => (
+          <label
+            key={idx}
+            className={`px-3 py-1 border rounded-full cursor-pointer ${
+              selectedAddons.includes(a.nome)
+                ? "bg-blue-600 text-white border-blue-600"
+                : "hover:bg-gray-50"
+            }`}
+          >
+            <input
+              type="checkbox"
+              className="hidden"
+              checked={selectedAddons.includes(a.nome)}
+              onChange={() =>
+                setSelectedAddons((prev) =>
+                  prev.includes(a.nome)
+                    ? prev.filter((n) => n !== a.nome)
+                    : [...prev, a.nome]
+                )
+              }
+            />
+            {a.nome} (+R$ {Number(a.preco).toFixed(2)})
+          </label>
+        ))}
+      </div>
+
+      <div className="flex justify-between">
+        <button onClick={onPrev} className="border rounded-lg px-3 py-2 flex items-center gap-1">
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </button>
+        <button
+          onClick={onNext}
+          className="bg-blue-600 text-white rounded-lg px-3 py-2 flex items-center gap-1 font-semibold hover:bg-blue-700"
+        >
+          Próximo <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StepResumo({
+  size,
+  tipo,
+  sabores,
+  selectedBorda,
+  selectedAddons,
+  total,
+  qty,
+  setQty,
+  onPrev,
+  onConfirm,
+}) {
+  return (
+    <div>
+      <h3 className="font-semibold mb-3 text-gray-900">Resumo do Pedido</h3>
+      <div className="text-sm text-gray-700 space-y-1">
+        <p><strong>Tamanho:</strong> {size}</p>
+        <p>
+          <strong>Sabores:</strong>{" "}
+          {tipo === "meio"
+            ? sabores.map((s) => `1/2 ${s.name}`).join(" + ")
+            : sabores.map((s) => s.name).join(" + ")}
+        </p>
+        {selectedBorda && (
+          <p>
+            <strong>Borda:</strong> {selectedBorda.nome} (
+            {Number(selectedBorda.preco) > 0
+              ? `+R$ ${Number(selectedBorda.preco).toFixed(2)}`
+              : "Grátis"}
+            )
+          </p>
         )}
+        {selectedAddons.length > 0 && (
+          <p>
+            <strong>Adicionais:</strong> {selectedAddons.join(", ")}
+          </p>
+        )}
+      </div>
+
+      <p className="font-bold text-lg text-gray-900 mt-3">
+        Total: R$ {total.toFixed(2)}
+      </p>
+
+      <div className="flex items-center justify-center gap-4 my-4">
+        <button
+          className="w-8 h-8 border rounded-full text-lg"
+          onClick={() => setQty((q) => Math.max(1, q - 1))}
+        >
+          -
+        </button>
+        <span className="font-semibold">{qty}</span>
+        <button
+          className="w-8 h-8 border rounded-full text-lg"
+          onClick={() => setQty((q) => q + 1)}
+        >
+          +
+        </button>
+      </div>
+
+      <div className="flex justify-between">
+        <button
+          onClick={onPrev}
+          className="border rounded-lg px-3 py-2 flex items-center gap-1"
+        >
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </button>
+        <button
+          onClick={onConfirm}
+          className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 font-semibold flex items-center gap-1"
+        >
+          Confirmar Pedido
+        </button>
       </div>
     </div>
   );

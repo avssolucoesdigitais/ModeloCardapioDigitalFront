@@ -76,35 +76,35 @@ export default function HamburguerBuilderModal({
       case 1:
         return (
           <>
-            <h3 className="font-semibold mb-3 text-lg">🍞 Escolha o pão</h3>
+            <h3 className="font-semibold mb-3 text-lg"> Escolha o pão</h3>
             <div className="flex flex-wrap gap-2">{baseProduct.paes?.map((p) => optionButton(p, selectedPao, setSelectedPao))}</div>
           </>
         );
       case 2:
         return (
           <>
-            <h3 className="font-semibold mb-3 text-lg">🥩 Escolha a carne</h3>
+            <h3 className="font-semibold mb-3 text-lg"> Escolha a carne</h3>
             <div className="flex flex-wrap gap-2">{baseProduct.carnes?.map((c) => optionButton(c, selectedCarne, setSelectedCarne))}</div>
           </>
         );
       case 3:
         return (
           <>
-            <h3 className="font-semibold mb-3 text-lg">🧀 Escolha o queijo</h3>
+            <h3 className="font-semibold mb-3 text-lg"> Escolha o queijo</h3>
             <div className="flex flex-wrap gap-2">{baseProduct.queijos?.map((q) => optionButton(q, selectedQueijo, setSelectedQueijo))}</div>
           </>
         );
       case 4:
         return (
           <>
-            <h3 className="font-semibold mb-3 text-lg">🥫 Escolha o molho</h3>
+            <h3 className="font-semibold mb-3 text-lg"> Escolha o molho</h3>
             <div className="flex flex-wrap gap-2">{baseProduct.molhos?.map((m) => optionButton(m, selectedMolho, setSelectedMolho))}</div>
           </>
         );
       case 5:
         return (
           <>
-            <h3 className="font-semibold mb-3 text-lg">➕ Adicionais</h3>
+            <h3 className="font-semibold mb-3 text-lg"> Adicionais</h3>
             <div className="flex flex-wrap gap-2">
               {baseProduct.complementos?.map((a) => (
                 <button
@@ -144,7 +144,7 @@ export default function HamburguerBuilderModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-bold">🍔 Montar Hambúrguer</h2>
+          <h2 className="text-lg font-bold"> Montar Hambúrguer</h2>
           <button
             onClick={onClose}
             className="text-sm text-gray-500 hover:text-red-600"
@@ -196,7 +196,7 @@ export default function HamburguerBuilderModal({
               onClick={handleConfirm}
               className="px-4 py-2 bg-green-600 text-white rounded-lg w-full sm:w-auto"
             >
-              ✅ Confirmar ({`R$ ${total.toFixed(2)}`})
+               Confirmar ({`R$ ${total.toFixed(2)}`})
             </button>
           )}
         </div>

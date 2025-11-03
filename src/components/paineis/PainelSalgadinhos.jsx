@@ -86,23 +86,7 @@ export default function PainelSalgadinhos() {
     saveDocData(next);
   }
 
-  // ===== Adicionais =====
-  const [novoAdicional, setNovoAdicional] = useState({ nome: "", preco: "" });
-
-  function addAdicional() {
-    if (!novoAdicional.nome || !novoAdicional.preco) return;
-
-    const precoCorreto = parsePreco(novoAdicional.preco);
-    const next = { ...docData, adicionais: [...docData.adicionais, { ...novoAdicional, preco: precoCorreto, id: Date.now() }] };
-    saveDocData(next);
-    setNovoAdicional({ nome: "", preco: "" });
-  }
-
-  function removeAdicional(id) {
-    const next = { ...docData, adicionais: docData.adicionais.filter((a) => a.id !== id) };
-    saveDocData(next);
-  }
-
+  
   return (
     <div className="space-y-10">
 
@@ -175,43 +159,6 @@ export default function PainelSalgadinhos() {
             </div>
           </div>
         ))}
-      </section>
-
-      {/* Adicionais */}
-      <section className="border p-4 rounded-md bg-gray-50 space-y-3">
-        <h2 className="text-xl font-bold mb-2">➕ Adicionais</h2>
-        <input
-          placeholder="Nome"
-          value={novoAdicional.nome}
-          onChange={(e) => setNovoAdicional({ ...novoAdicional, nome: e.target.value })}
-          className="border px-2 py-1 rounded w-full"
-        />
-        <input
-          placeholder="Preço"
-          value={novoAdicional.preco}
-          onChange={(e) => setNovoAdicional({ ...novoAdicional, preco: e.target.value })}
-          className="border px-2 py-1 rounded w-full"
-        />
-        <button
-          onClick={addAdicional}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          Adicionar
-        </button>
-
-        <div className="space-y-2 mt-2">
-          {docData.adicionais.map((a) => (
-            <div key={a.id} className="flex justify-between items-center border p-2 rounded">
-              <span>{a.nome} (+R$ {parsePreco(a.preco).toFixed(2).replace(".", ",")})</span>
-              <button
-                onClick={() => removeAdicional(a.id)}
-                className="text-red-600 hover:underline"
-              >
-                Remover
-              </button>
-            </div>
-          ))}
-        </div>
       </section>
     </div>
   );

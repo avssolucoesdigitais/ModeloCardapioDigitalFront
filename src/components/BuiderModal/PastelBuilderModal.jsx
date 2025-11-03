@@ -19,7 +19,6 @@ export default function PastelBuilderModal({
   onClose,
   baseProduct,
   onAdd,
-  preset,
 }) {
   const [selectedAddons, setSelectedAddons] = useState([]); // Selected add-ons
   const [qty, setQty] = useState(1); // Quantity of pastéis
@@ -109,7 +108,7 @@ export default function PastelBuilderModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
       <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] overflow-y-auto p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold">🥟 Montar Pastel</h2>
+          <h2 className="text-lg font-bold"> Montar Pastel</h2>
           <button
             onClick={onClose}
             className="text-sm text-gray-500 hover:underline"

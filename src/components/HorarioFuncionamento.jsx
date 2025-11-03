@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { FiClock, FiAlertTriangle, FiCheckCircle, FiXCircle } from "react-icons/fi";
 
-// Dias com labels corretos
+/* ===================== Configuração ===================== */
 const DIAS_KEYS = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 const DIAS_LABEL = {
   domingo: "Domingo",
@@ -14,6 +15,7 @@ const DIAS_LABEL = {
   sabado: "Sábado",
 };
 
+/* ===================== Utilitários ===================== */
 function toMin(hhmm) {
   if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return null;
   const [h, m] = hhmm.split(":").map(Number);
@@ -27,63 +29,52 @@ function nowInFortaleza() {
 
 function getStatus(horarios) {
   const now = nowInFortaleza();
-  const weekday = now.getDay(); // 0 = domingo
+  const weekday = now.getDay();
   const minutes = now.getHours() * 60 + now.getMinutes();
 
   const keyToday = DIAS_KEYS[weekday];
   const keyPrev = DIAS_KEYS[(weekday + 6) % 7];
-
   const today = horarios?.[keyToday];
   const prev = horarios?.[keyPrev];
 
   const tOpen = today?.abre ? toMin(today.abre) : null;
   const tClose = today?.fecha ? toMin(today.fecha) : null;
-
   const pOpen = prev?.abre ? toMin(prev.abre) : null;
   const pClose = prev?.fecha ? toMin(prev.fecha) : null;
 
   let extraMsg = "";
 
-  /// === CASO HOJE NÃO TENHA HORÁRIO CONFIGURADO ===
-if (tOpen == null || tClose == null) {
-  for (let i = 1; i <= 7; i++) {
-    const idx = (weekday + i) % 7;
-    const k = DIAS_KEYS[idx];
-    const h = horarios?.[k];
-    if (h?.abre && h?.fecha) {
-      extraMsg = `Hoje não teremos atividades. Retornaremos ${DIAS_LABEL[k]} às ${h.abre}.`;
-      break;
+  // Caso sem horário hoje
+  if (tOpen == null || tClose == null) {
+    for (let i = 1; i <= 7; i++) {
+      const idx = (weekday + i) % 7;
+      const k = DIAS_KEYS[idx];
+      const h = horarios?.[k];
+      if (h?.abre && h?.fecha) {
+        extraMsg = `Hoje não teremos atividades. Retornaremos ${DIAS_LABEL[k]} às ${h.abre}.`;
+        break;
+      }
     }
+    return { open: false, labelHoje: DIAS_LABEL[keyToday], hojeAbre: null, hojeFecha: null, extraMsg };
   }
-  return { open: false, labelHoje: DIAS_LABEL[keyToday], hojeAbre: null, hojeFecha: null, extraMsg };
-}
 
-  // === CASO HOJE TENHA HORÁRIO ===
-
-  // 1. Aberto herdado da noite anterior
+  // Aberto herdado da noite anterior
   if (pOpen != null && pClose != null && pClose <= pOpen) {
     if (minutes < pClose) {
       return { open: true, labelHoje: DIAS_LABEL[keyPrev], hojeAbre: prev.abre, hojeFecha: prev.fecha };
     }
   }
 
-  // 2. Janela normal de hoje
+  // Janela normal
   if (tClose > tOpen) {
-    // Exemplo: 18:00 às 23:00
     if (minutes >= tOpen && minutes < tClose) {
-      if (tClose - minutes <= 30) {
-        extraMsg = "⚠️ Logo mais encerraremos nossas atividades.";
-      }
+      if (tClose - minutes <= 30) extraMsg = "⚠️ Logo mais encerraremos nossas atividades.";
       return { open: true, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
     } else if (minutes < tOpen) {
-      // Ainda vai abrir hoje
-      if (tOpen - minutes <= 30) {
-        extraMsg = "⏳ Logo mais iniciaremos nossas atividades.";
-      }
+      if (tOpen - minutes <= 30) extraMsg = "⏳ Logo mais iniciaremos nossas atividades.";
       return { open: false, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
     }
   } else {
-    // Exemplo: 18:00 às 02:00 (vira a meia-noite)
     if (minutes >= tOpen || minutes < tClose) {
       if (
         (minutes >= tOpen && 1440 - minutes + tClose <= 30) ||
@@ -93,14 +84,12 @@ if (tOpen == null || tClose == null) {
       }
       return { open: true, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
     } else if (minutes < tOpen) {
-      if (tOpen - minutes <= 30) {
-        extraMsg = "⏳ Logo mais iniciaremos nossas atividades.";
-      }
+      if (tOpen - minutes <= 30) extraMsg = "⏳ Logo mais iniciaremos nossas atividades.";
       return { open: false, labelHoje: DIAS_LABEL[keyToday], hojeAbre: today.abre, hojeFecha: today.fecha, extraMsg };
     }
   }
 
-  // 3. Já passou o horário de hoje → próximo dia
+  // Próximo dia
   for (let i = 1; i <= 7; i++) {
     const idx = (weekday + i) % 7;
     const k = DIAS_KEYS[idx];
@@ -121,6 +110,7 @@ if (tOpen == null || tClose == null) {
   return { open: false, labelHoje: DIAS_LABEL[keyToday], extraMsg };
 }
 
+/* ===================== Componente ===================== */
 export default function HorarioFuncionamento({ lojaId = "daypizza" }) {
   const [horarios, setHorarios] = useState(null);
   const [status, setStatus] = useState(null);
@@ -147,7 +137,11 @@ export default function HorarioFuncionamento({ lojaId = "daypizza" }) {
   }, [horarios]);
 
   if (!status) {
-    return <div className="p-3 bg-white/80 rounded">Carregando horários...</div>;
+    return (
+      <div className="p-4 rounded-xl border bg-white shadow-sm text-gray-600 animate-pulse">
+        Carregando horários...
+      </div>
+    );
   }
 
   const aberto = status.open;
@@ -166,16 +160,56 @@ export default function HorarioFuncionamento({ lojaId = "daypizza" }) {
   }
 
   return (
-    <div className="p-4 rounded-xl border shadow bg-white/90 text-gray-800">
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`w-2 h-2 rounded-full ${aberto ? "bg-green-500" : "bg-red-500"}`} />
-        <strong>{aberto ? "Aberto agora" : "Fechado agora"}</strong>
+    <div
+      className={`rounded-2xl p-5 sm:p-6 flex flex-col gap-3 shadow-md border transition-all ${
+        aberto ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+      }`}
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={`w-3 h-3 rounded-full ${
+            aberto ? "bg-green-500" : "bg-red-500"
+          } animate-pulse`}
+          aria-hidden="true"
+        />
+        <h3
+          className={`text-lg font-bold flex items-center gap-2 ${
+            aberto ? "text-green-700" : "text-red-700"
+          }`}
+        >
+          {aberto ? (
+            <>
+              <FiCheckCircle className="text-green-600" /> Aberto agora
+            </>
+          ) : (
+            <>
+              <FiXCircle className="text-red-600" /> Fechado agora
+            </>
+          )}
+        </h3>
       </div>
-      <div>
-        <div>
-          <strong>Hoje ({status.labelHoje}):</strong> {hojeTexto}
-        </div>
-        {msgExtra && <div className="mt-1">{msgExtra}</div>}
+
+      <div className="text-gray-800">
+        <p className="text-sm sm:text-base flex items-center gap-1">
+          <FiClock className="text-gray-500" aria-hidden="true" />
+          <strong>Hoje ({status.labelHoje}):</strong>{" "}
+          <span className="ml-1">{hojeTexto}</span>
+        </p>
+        {msgExtra && (
+          <p
+            className={`mt-2 text-sm ${
+              msgExtra.includes("⚠️") || msgExtra.includes("⏳")
+                ? "text-amber-600 flex items-center gap-1"
+                : "text-gray-700"
+            }`}
+          >
+            {(msgExtra.includes("⚠️") || msgExtra.includes("⏳")) && (
+              <FiAlertTriangle className="inline" aria-hidden="true" />
+            )}
+            {msgExtra.replace(/[⏳]/g, "")}
+          </p>
+        )}
       </div>
     </div>
   );

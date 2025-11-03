@@ -80,14 +80,14 @@ export default function PainelEsfiha() {
 
       {/* Lista de esfihas por categoria */}
       <div className="bg-white rounded-xl shadow-md p-4 space-y-6">
-        <h3 className="text-lg font-bold">🥟 Esfihas Cadastradas</h3>
+        <h3 className="text-lg font-bold"> Esfihas Cadastradas</h3>
 
         {esfihasPorCategoria.map(({ nome, itens }) => (
           <div key={nome} className="space-y-3">
             <h4 className="font-semibold capitalize flex items-center gap-2">
-              {nome === "tradicional" && "🥟 Tradicionais"}
-              {nome === "especial" && "⭐ Especiais"}
-              {nome === "doce" && "🍫 Doces"}
+              {nome === "tradicional" && " Tradicionais"}
+              {nome === "especial" && " Especiais"}
+              {nome === "doce" && " Doces"}
             </h4>
 
             {itens.length > 0 ? (
@@ -142,7 +142,7 @@ export default function PainelEsfiha() {
                         }}
                         className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold transition"
                       >
-                        ✏️ Editar
+                         Editar
                       </button>
 
                       <button
@@ -157,7 +157,7 @@ export default function PainelEsfiha() {
                         }}
                         className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition"
                       >
-                        🗑️ Excluir
+                         Excluir
                       </button>
 
                       <button

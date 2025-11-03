@@ -5,7 +5,6 @@ import { CATEGORIES } from "../utils/categoriasConfig";
 import PainelPizza from "../components/paineis/PainelPizza";
 import PainelHamburguer from "../components/paineis/painelHamburgue";
 import PainelPastel from "../components/paineis/painelPastel";
-import PainelHotDog from "../components/paineis/painelHotDog";
 import PainelBatata from "../components/paineis/painelBatataFrita";
 import PainelBebida from "../components/paineis/PainelBebidas";
 import PainelPromocao from "../components/paineis/painelPromocao";
@@ -13,6 +12,7 @@ import PainelCalzone from "../components/paineis/painelCalzone";
 import PainelEsfiha from "../components/paineis/painelEsfiha";
 import PainelSalgadinhos from "../components/paineis/PainelSalgadinhos";
 import PainelSalgados from "../components/paineis/painelSalgados";
+
 
 function OpcoesCategoriaAdmin() {
   const [activeCat, setActiveCat] = useState("Pizza");
@@ -56,7 +56,6 @@ function OpcoesCategoriaAdmin() {
         {activeCat === "Pizza" && <PainelPizza />}
         {activeCat === "Hamburguer" && <PainelHamburguer />}
         {activeCat === "Pastel" && <PainelPastel />}
-        {activeCat === "HotDog" && <PainelHotDog />}
         {activeCat === "Batata" && <PainelBatata />}
         {activeCat === "Bebida" && <PainelBebida />}
         {activeCat === "Promocao" && <PainelPromocao />}
@@ -64,6 +63,7 @@ function OpcoesCategoriaAdmin() {
         {activeCat === "Esfiha" && <PainelEsfiha />}
         {activeCat === "Salgadinhos" && <PainelSalgadinhos />}
         {activeCat === "Salgados" && <PainelSalgados />}
+       
       </div>
     </div>
   );

@@ -17,7 +17,7 @@ import { FaInstagram } from "react-icons/fa";
 import PizzaBuilderModal from "../components/BuiderModal/PizzaBuilderModal";
 import HamburguerBuilderModal from "../components/BuiderModal/BurgerBuilderModal";
 import PastelBuilderModal from "../components/BuiderModal/PastelBuilderModal.jsx";
-import HotDogBuilderModal from "../components/BuiderModal/HotDogBuilderModal.jsx";
+
 
 export default function Cardapio() {
   const cart = useCart();
@@ -45,12 +45,8 @@ export default function Cardapio() {
   const [basePastel, setBasePastel] = useState(null);
   const [pastelPreset, setPastelPreset] = useState(null);
 
-  // Estados HotDog
-  const [hotDogOpen, setHotDogOpen] = useState(false);
-  const [baseHotDog, setBaseHotDog] = useState(null);
-  const [hotDogPreset, setHotDogPreset] = useState(null);
 
-  // ---------- CARREGAR PRODUTOS ----------
+  // ---------- CARREGAR PRODUTOS (tudo que tem em "opcoes") ----------
   useEffect(() => {
     const ref = collection(db, "opcoes");
     const unsubscribe = onSnapshot(ref, (snapshot) => {
@@ -80,7 +76,7 @@ export default function Cardapio() {
     return () => unsubscribe();
   }, []);
 
-  // Carregar dados do Hamburguer
+  // Carregar dados do Hamburguer (opções para modal)
   useEffect(() => {
     (async () => {
       const ref = doc(db, "opcoes", "Hamburguer");
@@ -112,7 +108,7 @@ export default function Cardapio() {
     })();
   }, []);
 
-  // Carregar dados do Pastel
+  // Carregar dados do Pastel (opções)
   useEffect(() => {
     const loadPastelData = async () => {
       try {
@@ -134,27 +130,6 @@ export default function Cardapio() {
     loadPastelData();
   }, []);
 
-  // Carregar dados do HotDog
-  useEffect(() => {
-    const loadHotDogData = async () => {
-      try {
-        const ref = doc(db, "opcoes", "HotDog");
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data();
-          setBaseHotDog({
-            pães: data.paes || [],
-            carnes: data.carnes || [],
-            molhos: data.molhos || [],
-            complementos: data.complementos || [],
-          });
-        }
-      } catch (error) {
-        console.error("Erro ao carregar dados do HotDog:", error);
-      }
-    };
-    loadHotDogData();
-  }, []);
 
   // ---------- CATEGORIAS ----------
   const allCategories = [
@@ -163,6 +138,7 @@ export default function Cardapio() {
     { name: "Hamburguer", icon: "🍔" },
     { name: "Pastel", icon: "🥟" },
     { name: "HotDog", icon: "🌭" },
+    { name: "Marmitas", icon: "🍱" }, 
     { name: "Bebida", icon: "🥤" },
     { name: "Batata", icon: "🍟" },
     { name: "Salgadinhos", icon: "🍢" },
@@ -181,28 +157,27 @@ export default function Cardapio() {
       : [];
 
   // ---------- AGRUPAMENTO ----------
-const groupedProducts = products
-  .filter(
-    (p) =>
-      p.available !== false &&
-      (activeCategory === "Todas" || p.category === activeCategory) &&
-      (p.name || "").toLowerCase().includes(search.toLowerCase())
-  )
-  .reduce((acc, p) => {
-    const group =
-      activeCategory === "Todas" ? p.category || "Outros" : p.subCategory || "Outros";
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(p);
-    return acc;
-  }, {});
+  const groupedProducts = products
+    .filter(
+      (p) =>
+        p.available !== false &&
+        (activeCategory === "Todas" || p.category === activeCategory) &&
+        (p.name || "").toLowerCase().includes(search.toLowerCase())
+    )
+    .reduce((acc, p) => {
+      const group =
+        activeCategory === "Todas" ? p.category || "Outros" : p.subCategory || "Outros";
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(p);
+      return acc;
+    }, {});
 
-// Ordena os grupos → "Promocao" sempre primeiro
-const orderedGroups = Object.entries(groupedProducts).sort(([a], [b]) => {
-  if (a.toLowerCase() === "promocao") return -1;
-  if (b.toLowerCase() === "promocao") return 1;
-  return 0;
-});
-
+  // Ordena os grupos → "Promocao" sempre primeiro
+  const orderedGroups = Object.entries(groupedProducts).sort(([a], [b]) => {
+    if (a.toLowerCase() === "promocao") return -1;
+    if (b.toLowerCase() === "promocao") return 1;
+    return 0;
+  });
 
   // ---------- ADICIONAR AO CARRINHO ----------
   const makeOnAdd = (p) => (itemFromCard) => {
@@ -252,16 +227,7 @@ const orderedGroups = Object.entries(groupedProducts).sort(([a], [b]) => {
       return;
     }
 
-    if (category === "hotdog") {
-      setBaseHotDog(p);
-      setHotDogPreset({
-        size: itemFromCard?.size || "",
-        firstFlavorId: itemFromCard?.firstFlavorId || p.id,
-      });
-      setHotDogOpen(true);
-      return;
-    }
-
+    // Demais categorias simples
     cart.add({
       ...itemFromCard,
       qty: itemFromCard?.qty ?? 1,
@@ -299,9 +265,11 @@ const orderedGroups = Object.entries(groupedProducts).sort(([a], [b]) => {
                 key={cat.name || `categoria-${idx}`}
                 onClick={() => setActiveCategory(cat.name)}
                 className={`flex flex-col items-center px-3 py-2 rounded-lg min-w-[80px] text-xs sm:text-sm font-medium transition-all
-                  ${activeCategory === cat.name
-                    ? "bg-yellow-500 text-white shadow-lg"
-                    : "bg-white text-gray-700 hover:bg-gray-100"}`}
+                  ${
+                    activeCategory === cat.name
+                      ? "bg-yellow-500 text-white shadow-lg"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
               >
                 <span className="text-lg sm:text-xl mb-1">{cat.icon}</span>
                 {cat.name}
@@ -314,7 +282,6 @@ const orderedGroups = Object.entries(groupedProducts).sort(([a], [b]) => {
         <div className="w-full max-w-7xl mx-auto space-y-10">
           {Object.keys(groupedProducts).length > 0 ? (
             orderedGroups.map(([group, items]) => (
-
               <div key={group}>
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-5 border-b pb-2">
                   {group}
@@ -389,18 +356,6 @@ const orderedGroups = Object.entries(groupedProducts).sort(([a], [b]) => {
         }}
         baseProduct={basePastel}
         preset={pastelPreset}
-        onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
-      />
-
-      <HotDogBuilderModal
-        open={hotDogOpen}
-        onClose={() => {
-          setHotDogOpen(false);
-          setBaseHotDog(null);
-          setHotDogPreset(null);
-        }}
-        baseProduct={baseHotDog}
-        preset={hotDogPreset}
         onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
       />
 

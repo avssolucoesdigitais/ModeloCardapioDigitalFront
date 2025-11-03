@@ -66,7 +66,7 @@ export default function BatataBuilderModal({
   const renderAddons = () => {
     return (
       <>
-        <h3 className="font-semibold mb-3 text-lg">➕ Adicionais</h3>
+        <h3 className="font-semibold mb-3 text-lg"> Adicionais</h3>
         <div className="flex flex-wrap gap-2">
           {baseProduct.adicionais?.map((a) => (
             <button
@@ -90,7 +90,7 @@ export default function BatataBuilderModal({
   const renderSizes = () => {
     return (
       <>
-        <h3 className="font-semibold mb-3 text-lg">📏 Escolha o Tamanho</h3>
+        <h3 className="font-semibold mb-3 text-lg">Escolha o Tamanho</h3>
         <div className="flex flex-wrap gap-2">
           {baseProduct.sizes?.map((size) => (
             <button
@@ -121,7 +121,7 @@ export default function BatataBuilderModal({
       >
         {/* Conteúdo do Modal */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-bold">🍟 Montar Batata</h2>
+          <h2 className="text-lg font-bold"> Montar Batata</h2>
           <button
             onClick={onClose}
             className="text-sm text-gray-500 hover:text-red-600"

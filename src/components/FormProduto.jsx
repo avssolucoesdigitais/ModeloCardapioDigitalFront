@@ -13,12 +13,10 @@ export default function FormProduto({
   const [newSize, setNewSize] = useState("");
   const [loadingSave, setLoadingSave] = useState(false);
   const [file, setFile] = useState(null);
-
-  // 🔹 Referências para inputs → Enter pula para o próximo
   const formRefs = useRef([]);
 
   useEffect(() => {
-    formRefs.current = formRefs.current.slice(0, 10); // limita refs
+    formRefs.current = formRefs.current.slice(0, 20);
   }, []);
 
   function handleKeyDown(e, idx) {
@@ -30,24 +28,14 @@ export default function FormProduto({
   }
 
   async function handleSaveProduct() {
-    if (!form.name) {
-      alert("Nome obrigatório");
-      return;
-    }
-    if (!form.categoria) {
-      alert("Categoria obrigatória");
-      return;
-    }
+    if (!form.name) return alert("Nome obrigatório");
+    if (!form.categoria) return alert("Categoria obrigatória");
 
     setLoadingSave(true);
-
     try {
       let imageUrl = form.image;
-      if (file) {
-        imageUrl = await uploadToCloudinary(file);
-      }
+      if (file) imageUrl = await uploadToCloudinary(file);
 
-      // 🔹 Normaliza preços (aceita vírgula ou ponto)
       const normalizedPrices = Object.fromEntries(
         Object.entries(form.prices || {}).map(([k, v]) => [
           k,
@@ -55,18 +43,11 @@ export default function FormProduto({
         ])
       );
 
-      const produto = {
-        ...form,
-        image: imageUrl,
-        prices: normalizedPrices,
-      };
-
+      const produto = { ...form, image: imageUrl, prices: normalizedPrices };
       const next = { ...docData };
-      if (editingIdx !== null) {
-        next.produtos[editingIdx] = produto;
-      } else {
-        next.produtos = [...(next.produtos || []), produto];
-      }
+
+      if (editingIdx !== null) next.produtos[editingIdx] = produto;
+      else next.produtos = [...(next.produtos || []), produto];
 
       await saveDocData(next);
       setDocData(next);
@@ -101,130 +82,162 @@ export default function FormProduto({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6 max-w-2xl mx-auto">
-      <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
-        ➕ {editingIdx !== null ? "Editar Item" : "Adicionar Novo Item"}
+    <form
+      className="bg-white rounded-2xl shadow-md p-6 sm:p-8 space-y-6 max-w-screen-sm mx-auto"
+      aria-label="Formulário de cadastro de produto"
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSaveProduct();
+      }}
+    >
+      <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-900">
+        {editingIdx !== null ? "✏️ Editar Item" : "➕ Adicionar Novo Item"}
       </h2>
 
-      {/* Nome + Status */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <input
-          type="text"
-          placeholder="Nome do produto"
-          value={form.name}
-          ref={(el) => (formRefs.current[0] = el)}
-          onKeyDown={(e) => handleKeyDown(e, 0)}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="sm:col-span-2 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
-        <select
-          value={form.available ? "true" : "false"}
-          ref={(el) => (formRefs.current[1] = el)}
-          onKeyDown={(e) => handleKeyDown(e, 1)}
-          onChange={(e) =>
-            setForm({ ...form, available: e.target.value === "true" })
-          }
-          className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-        >
-          <option value="true">Disponível</option>
-          <option value="false">Indisponível</option>
-        </select>
+      {/* Nome e disponibilidade */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        <label className="sm:col-span-2">
+          <span className="text-sm font-medium text-gray-700">Nome</span>
+          <input
+            type="text"
+            placeholder="Nome do produto"
+            aria-label="Nome do produto"
+            value={form.name}
+            ref={(el) => (formRefs.current[0] = el)}
+            onKeyDown={(e) => handleKeyDown(e, 0)}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none"
+          />
+        </label>
+
+        <label>
+          <span className="text-sm font-medium text-gray-700">Status</span>
+          <select
+            aria-label="Status do produto"
+            value={form.available ? "true" : "false"}
+            ref={(el) => (formRefs.current[1] = el)}
+            onKeyDown={(e) => handleKeyDown(e, 1)}
+            onChange={(e) =>
+              setForm({ ...form, available: e.target.value === "true" })
+            }
+            className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none"
+          >
+            <option value="true">Disponível</option>
+            <option value="false">Indisponível</option>
+          </select>
+        </label>
       </div>
 
       {/* Categoria */}
-      <div>
+      <label>
+        <span className="text-sm font-medium text-gray-700">Categoria</span>
         <select
+          aria-label="Categoria"
           value={form.categoria || ""}
           ref={(el) => (formRefs.current[2] = el)}
           onKeyDown={(e) => handleKeyDown(e, 2)}
           onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-          className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+          className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none"
         >
-          <option value="">Selecione a categoria</option>
-          <option value="tradicional"> Tradicionais</option>
-          <option value="especial">Especiais</option>
-          <option value="doce"> Doces</option>
-         
+          <option value="">Selecione...</option>
+          <option value="tradicional">Tradicional</option>
+          <option value="especial">Especial</option>
+          <option value="doce">Doce</option>
         </select>
-      </div>
+      </label>
 
       {/* Descrição */}
-      <textarea
-        placeholder="Descrição do produto"
-        value={form.description}
-        ref={(el) => (formRefs.current[3] = el)}
-        onKeyDown={(e) => handleKeyDown(e, 3)}
-        onChange={(e) => setForm({ ...form, description: e.target.value })}
-        className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-        rows={3}
-      />
+      <label>
+        <span className="text-sm font-medium text-gray-700">Descrição</span>
+        <textarea
+          placeholder="Detalhes do produto"
+          aria-label="Descrição do produto"
+          value={form.description}
+          ref={(el) => (formRefs.current[3] = el)}
+          onKeyDown={(e) => handleKeyDown(e, 3)}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none resize-none"
+          rows={3}
+        />
+      </label>
 
       {/* Gerenciar tamanhos */}
-      <div className="space-y-3">
-        <label className="font-semibold">Tamanhos (opcional)</label>
+      <section>
+        <h3 className="font-semibold text-gray-800 mb-2">
+          Tamanhos (opcional)
+        </h3>
 
-        <div className="flex flex-col sm:flex-row gap-2 mt-1">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             placeholder="Ex: 250ml, Médio, Grande..."
+            aria-label="Novo tamanho"
             value={newSize}
             ref={(el) => (formRefs.current[4] = el)}
             onKeyDown={(e) => handleKeyDown(e, 4)}
             onChange={(e) => setNewSize(e.target.value)}
-            className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none"
           />
           <button
             type="button"
             onClick={handleAddSize}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition w-full sm:w-auto"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 active:scale-95 transition w-full sm:w-auto"
           >
             + Adicionar
           </button>
         </div>
 
-        <div className="grid gap-3">
+        {/* Lista de tamanhos */}
+        <div className="mt-3 space-y-2">
           {form.sizes.map((size, idx) => (
             <div
               key={size}
-              className="flex flex-wrap items-center gap-3 border rounded-lg p-2 bg-gray-50"
+              className="flex flex-wrap items-center justify-between border rounded-lg p-2 bg-gray-50"
             >
-              <span className="font-medium">{size}</span>
-              <input
-                type="text"
-                className="border rounded-lg px-2 py-1 w-28 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={
-                  form.prices[size] !== undefined && form.prices[size] !== null
-                    ? String(form.prices[size]).replace(".", ",")
-                    : ""
-                }
-                ref={(el) => (formRefs.current[5 + idx] = el)}
-                onKeyDown={(e) => handleKeyDown(e, 5 + idx)}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^\d.,]/g, "");
-                  setForm({
-                    ...form,
-                    prices: { ...form.prices, [size]: val },
-                  });
-                }}
-              />
+              <div className="flex items-center gap-3 flex-1">
+                <span className="font-medium text-gray-800">{size}</span>
+                <input
+                  type="text"
+                  aria-label={`Preço do tamanho ${size}`}
+                  className="border rounded-lg px-2 py-1 w-28 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none"
+                  value={
+                    form.prices[size] !== undefined
+                      ? String(form.prices[size]).replace(".", ",")
+                      : ""
+                  }
+                  ref={(el) => (formRefs.current[5 + idx] = el)}
+                  onKeyDown={(e) => handleKeyDown(e, 5 + idx)}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^\d.,]/g, "");
+                    setForm({
+                      ...form,
+                      prices: { ...form.prices, [size]: val },
+                    });
+                  }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => handleRemoveSize(size)}
                 className="text-red-600 font-bold hover:text-red-800"
+                aria-label={`Remover tamanho ${size}`}
               >
                 ✕
               </button>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Imagem */}
-      <div className="space-y-2">
-        <label className="font-semibold">Imagem do Item</label>
+      <section>
+        <label className="block font-semibold text-gray-800 mb-1">
+          Imagem do Produto
+        </label>
         <input
           type="file"
           accept="image/*"
+          aria-label="Selecionar imagem do produto"
           ref={(el) => (formRefs.current[20] = el)}
           onKeyDown={(e) => handleKeyDown(e, 20)}
           onChange={(e) => setFile(e.target.files[0])}
@@ -234,11 +247,11 @@ export default function FormProduto({
         />
 
         {(file || form.image) && (
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex items-center gap-4">
             <img
               src={file ? URL.createObjectURL(file) : form.image}
-              alt="Preview"
-              className="h-24 rounded-md object-cover border"
+              alt="Pré-visualização da imagem"
+              className="h-24 w-24 rounded-md object-cover border"
             />
             <button
               type="button"
@@ -252,14 +265,13 @@ export default function FormProduto({
             </button>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Botão principal */}
       <button
-        type="button"
-        onClick={handleSaveProduct}
+        type="submit"
         disabled={loadingSave}
-        className="bg-blue-600 text-white w-full py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+        className="w-full py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {loadingSave
           ? "Salvando..."
@@ -267,6 +279,6 @@ export default function FormProduto({
           ? "Salvar Alterações"
           : "Adicionar Item"}
       </button>
-    </div>
+    </form>
   );
 }

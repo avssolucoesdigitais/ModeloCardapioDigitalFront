@@ -18,14 +18,14 @@ export default function PainelPizza() {
 
   useEffect(() => {
     (async () => {
-      const ref = doc(db, "opcoes", "Pizza"); // 🔥 direto na raiz
+      const ref = doc(db, "opcoes", "Pizza");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Pizza"); // 🔥 direto na raiz
+    const ref = doc(db, "opcoes", "Pizza");
     await setDoc(ref, next, { merge: false });
   }
 
@@ -38,12 +38,11 @@ export default function PainelPizza() {
       prices: {},
       available: true,
       categoria: "",
-      category: "Pizza", // 🔥 mantém fixo
+      category: "Pizza",
     });
     setEditingIdx(null);
   }
 
-  // Categorias fixas
   const categorias = ["tradicional", "especial", "doce"];
   const pizzasPorCategoria = categorias.map((cat) => ({
     nome: cat,
@@ -51,8 +50,8 @@ export default function PainelPizza() {
   }));
 
   return (
-    <div className="space-y-10">
-      {/* Formulário de cadastro/edição */}
+    <div className="space-y-10 max-w-5xl mx-auto">
+      {/* Formulário */}
       <FormProduto
         form={form}
         setForm={setForm}
@@ -63,13 +62,15 @@ export default function PainelPizza() {
         saveDocData={saveDocData}
       />
 
-      {/* Lista agrupada */}
-      <div className="bg-white rounded-xl shadow-md p-4 space-y-6">
-        <h3 className="text-lg font-bold">🍕 Pizzas Cadastradas</h3>
+      {/* Lista de produtos */}
+      <section className="bg-white rounded-2xl shadow-sm p-6 space-y-6 border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          🍕 Pizzas Cadastradas
+        </h3>
 
         {pizzasPorCategoria.map(({ nome, itens }) => (
           <div key={nome} className="space-y-3">
-            <h4 className="font-semibold capitalize flex items-center gap-2">
+            <h4 className="font-semibold capitalize text-gray-700 flex items-center gap-2 border-b pb-1">
               {nome === "tradicional" && "🍕 Tradicionais"}
               {nome === "especial" && "⭐ Especiais"}
               {nome === "doce" && "🍫 Doces"}
@@ -81,29 +82,33 @@ export default function PainelPizza() {
                 return (
                   <div
                     key={p.id || realIdx}
-                    className="flex flex-col sm:flex-row gap-4 items-start border rounded-lg p-4 bg-white shadow-sm"
+                    className="flex flex-col sm:flex-row gap-4 items-start border rounded-xl p-4 bg-gray-50 hover:bg-gray-100 transition-all"
                   >
-                    {/* Imagem */}
                     <img
                       src={p.image || "https://via.placeholder.com/100"}
                       alt={p.name}
-                      className="w-24 h-24 rounded-md object-cover border"
+                      className="w-24 h-24 rounded-lg object-cover border"
                     />
 
-                    {/* Infos */}
                     <div className="flex-1">
-                      <h4 className="font-bold text-lg">{p.name}</h4>
+                      <h4 className="font-semibold text-gray-900 text-lg leading-tight">
+                        {p.name}
+                      </h4>
                       <p className="text-sm text-gray-600">{p.description}</p>
 
                       {p.sizes?.length > 0 && (
-                        <p className="mt-1 text-sm font-medium text-gray-700">
-                          Tamanhos:{" "}
+                        <p className="mt-2 text-sm text-gray-700">
+                          <strong>Tamanhos:</strong>{" "}
                           {p.sizes
                             .map(
                               (s) =>
                                 `${s} (R$ ${
                                   p.prices[s]
-                                    ? Number(p.prices[s])
+                                    ? Number(
+                                        String(p.prices[s])
+                                          .replace(",", ".")
+                                          .replace(/[^\d.]/g, "")
+                                      )
                                         .toFixed(2)
                                         .replace(".", ",")
                                     : "0,00"
@@ -114,14 +119,14 @@ export default function PainelPizza() {
                       )}
                     </div>
 
-                    {/* Ações */}
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => {
-                          setForm({ ...p, category: "Pizza" }); // 🔥 garante ao editar
+                          setForm({ ...p, category: "Pizza" });
                           setEditingIdx(realIdx);
                         }}
-                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold transition"
+                        className="px-4 py-2 rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600 transition"
+                        aria-label={`Editar ${p.name}`}
                       >
                         ✏️ Editar
                       </button>
@@ -137,7 +142,8 @@ export default function PainelPizza() {
                             setDocData(next);
                           }
                         }}
-                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition"
+                        className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+                        aria-label={`Excluir ${p.name}`}
                       >
                         🗑️ Excluir
                       </button>
@@ -155,6 +161,7 @@ export default function PainelPizza() {
                             ? "bg-green-600 hover:bg-green-700 text-white"
                             : "bg-gray-400 hover:bg-gray-500 text-white"
                         }`}
+                        aria-label={`Alterar disponibilidade de ${p.name}`}
                       >
                         {p.available ? "✅ Disponível" : "❌ Indisponível"}
                       </button>
@@ -163,52 +170,47 @@ export default function PainelPizza() {
                 );
               })
             ) : (
-              <p className="text-sm text-gray-500">
-                Nenhum item nessa categoria.
-              </p>
+              <p className="text-sm text-gray-500 italic">Nenhum item nessa categoria.</p>
             )}
           </div>
         ))}
-      </div>
+      </section>
 
       {/* Bordas */}
-      <section>
-        <h2 className="text-lg font-bold mb-3">🥖 Bordas</h2>
-        <ItemList
-          items={docData.bordas}
-          onChange={(items) => {
-            const next = { ...docData, bordas: items };
-            setDocData(next);
-            saveDocData(next);
-          }}
-        />
-      </section>
+      <SimpleItemSection
+        title="🥖 Bordas"
+        items={docData.bordas}
+        onChange={(items) => {
+          const next = { ...docData, bordas: items };
+          setDocData(next);
+          saveDocData(next);
+        }}
+      />
 
       {/* Adicionais */}
-      <section>
-        <h2 className="text-lg font-bold mb-3">🧀 Adicionais</h2>
-        <ItemList
-          items={docData.adicionais}
-          onChange={(items) => {
-            const next = { ...docData, adicionais: items };
-            setDocData(next);
-            saveDocData(next);
-          }}
-        />
-      </section>
+      <SimpleItemSection
+        title="🧀 Adicionais"
+        items={docData.adicionais}
+        onChange={(items) => {
+          const next = { ...docData, adicionais: items };
+          setDocData(next);
+          saveDocData(next);
+        }}
+      />
     </div>
   );
 }
 
-/* ======================================================
-   Componentes auxiliares simples
-   ====================================================== */
-function ItemList({ items, onChange }) {
+/* --------------------------- Componentes auxiliares --------------------------- */
+function SimpleItemSection({ title, items, onChange }) {
   const [novo, setNovo] = useState({ nome: "", preco: "" });
 
   function addItem() {
-    if (!novo.nome) return;
-    onChange([...items, { ...novo, id: Date.now() }]);
+    if (!novo.nome.trim()) return;
+    const precoNormalizado =
+      parseFloat(String(novo.preco).replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+
+    onChange([...items, { nome: novo.nome, preco: precoNormalizado, id: Date.now() }]);
     setNovo({ nome: "", preco: "" });
   }
 
@@ -217,50 +219,56 @@ function ItemList({ items, onChange }) {
   }
 
   return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="flex items-center justify-between border p-2 rounded"
-        >
-          <span>
-            {item.nome}{" "}
-            {item.preco && (
-              <span className="text-green-600">
-                +R$ {Number(item.preco).toFixed(2)}
-              </span>
-            )}
-          </span>
-          <button
-            onClick={() => removeItem(item.id)}
-            className="text-red-600 hover:underline"
+    <section className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
+      <h2 className="text-lg font-bold text-gray-900 mb-4">{title}</h2>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between border rounded-lg px-3 py-2 bg-gray-50"
           >
-            Remover
+            <span className="text-gray-800">
+              {item.nome}{" "}
+              {item.preco !== undefined && (
+                <span className="text-blue-600 ml-1 font-medium">
+                  +R$ {Number(item.preco).toFixed(2).replace(".", ",")}
+                </span>
+              )}
+            </span>
+            <button
+              onClick={() => removeItem(item.id)}
+              className="text-red-600 font-medium hover:text-red-800 transition"
+            >
+              Remover
+            </button>
+          </div>
+        ))}
+
+        <div className="flex flex-col sm:flex-row gap-2 mt-3">
+          <input
+            placeholder="Nome"
+            value={novo.nome}
+            onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
+            className="border rounded-lg px-3 py-2 flex-1 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none"
+          />
+          <input
+            placeholder="Preço"
+            value={novo.preco}
+            onChange={(e) => {
+              // Permite apenas números, vírgulas e pontos
+              const val = e.target.value.replace(/[^\d.,]/g, "");
+              setNovo({ ...novo, preco: val });
+            }}
+            className="border rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none"
+          />
+          <button
+            onClick={addItem}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 active:scale-95 transition"
+          >
+            +
           </button>
         </div>
-      ))}
-
-      {/* Novo item */}
-      <div className="flex gap-2">
-        <input
-          placeholder="Nome"
-          value={novo.nome}
-          onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
-          className="border px-2 py-1 rounded flex-1"
-        />
-        <input
-          placeholder="Preço"
-          value={novo.preco}
-          onChange={(e) => setNovo({ ...novo, preco: e.target.value })}
-          className="border px-2 py-1 rounded w-28"
-        />
-        <button
-          onClick={addItem}
-          className="bg-blue-600 text-white px-3 rounded"
-        >
-          +
-        </button>
       </div>
-    </div>
+    </section>
   );
 }

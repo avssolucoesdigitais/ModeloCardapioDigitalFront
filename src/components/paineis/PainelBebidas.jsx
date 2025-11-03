@@ -102,7 +102,7 @@ export default function PainelBebida() {
 
       {/* Formulário Bebida */}
       <section className="border p-4 rounded-md bg-gray-50 space-y-3">
-        <h2 className="text-xl font-bold mb-2">🥤 Bebida</h2>
+        <h2 className="text-xl font-bold mb-2"> Bebida</h2>
         <input
           placeholder="Nome"
           value={novoProduto.nome}
