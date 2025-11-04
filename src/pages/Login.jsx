@@ -4,7 +4,7 @@ import { auth, db } from "/src/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.icon.png";
 import fundo from "../assets/fundo2l.png";
 
 // 🔹 Ícones do React Icons (FontAwesome)
@@ -49,7 +49,7 @@ export default function Login() {
         {/* Logo + título */}
         <div className="flex items-center gap-3">
           <img src={logo} alt="logo" className="h-14 w-14 md:h-20 md:w-20 object-contain" />
-          <h1 className="text-lg md:text-xl font-bold text-center md:text-left">Área Administrativa</h1>
+          <h1 className="text-lg md:text-xl font-bold text-center md:text-left">La-Carta Cardapio Online.</h1>
         </div>
 
         {/* Redes sociais */}

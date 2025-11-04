@@ -3,6 +3,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { useState } from "react";
 import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut } from "react-icons/fi";
 import { FaPizzaSlice, FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
+import logo from "../assets/logo.icon.png"
 
 export default function AdminLayout() {
   const location = useLocation();
@@ -41,9 +42,12 @@ export default function AdminLayout() {
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         {/* Logo / Título */}
-        <div className="px-6 py-6 font-bold text-2xl tracking-wide flex items-center justify-center border-b border-[#1A2E50]">
+        <div className="px-6 py-6 font-bold text-2xl tracking-wide flex items-center flex-col justify-center border-b border-[#1A2E50]">
+          <div>
+            <img src={logo} alt="logo" className= "h-25 w-25 "/>
+          </div>
           <span className="bg-gradient-to-r from-[#009DFF] to-[#00E5FF] text-transparent bg-clip-text">
-            SASP Admin
+            La-Carta
           </span>
         </div>
 
