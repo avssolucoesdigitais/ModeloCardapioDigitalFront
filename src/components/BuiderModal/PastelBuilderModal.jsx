@@ -1,101 +1,71 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
-// Helper to parse price
-function parsePreco(preco) {
-  if (typeof preco === "number") {
-    return preco;
-  }
+/* ======================================================
+   MODAL DE MONTAGEM DE PASTEL (UX igual ao da Pizza)
+   ====================================================== */
+export default function PastelBuilderModal({ open, onClose, baseProduct, onAdd }) {
+  const [step, setStep] = useState(1);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedAddons, setSelectedAddons] = useState([]);
+  const [qty, setQty] = useState(1);
 
-  if (typeof preco === "string") {
-    return parseFloat(preco.replace(",", "."));
-  }
+  const sizes = Object.keys(baseProduct?.prices || {});
+  const extras = useMemo(() => baseProduct?.adicionais || [], [baseProduct]);
 
-  return 0; // Default value if not a number or string
-}
-
-export default function PastelBuilderModal({
-  open,
-  onClose,
-  baseProduct,
-  onAdd,
-}) {
-  const [selectedAddons, setSelectedAddons] = useState([]); // Selected add-ons
-  const [qty, setQty] = useState(1); // Quantity of pastéis
-  const [step, setStep] = useState(1); // Step in the modal
-  const [selectedSize, setSelectedSize] = useState(null); // Selected size (e.g., P, M, G)
-
-  // Ensure baseProduct and baseProduct.prices are defined
-  const precoBase = selectedSize ? parsePreco(baseProduct?.prices?.[selectedSize]) : 0; // Safe access with selected size
-
-  // Extra add-ons available for the pastel
-  const extras = useMemo(() => {
-    const arr = baseProduct?.adicionais || [];
-    const map = new Map();
-    arr.forEach((a) => map.set(a.nome, a));
-    return Array.from(map.values());
-  }, [baseProduct]);
-
-  // Price for the selected add-ons
+  const precoBase = Number(baseProduct?.prices?.[selectedSize] || 0);
   const precoAddons = selectedAddons.reduce((acc, nome) => {
     const addon = extras.find((a) => a.nome === nome);
     return acc + Number(addon?.preco || 0);
   }, 0);
+  const total = (precoBase + precoAddons) * qty;
 
-  // Total price
-  const precoTotal = precoBase + precoAddons;
-  const total = precoTotal * qty;
-
-  // Reset on modal open
+  /* ---------- Efeitos ---------- */
   useEffect(() => {
     if (!open) return;
     setStep(1);
+    setSelectedSize("");
     setSelectedAddons([]);
     setQty(1);
-    setSelectedSize(null); // Reset size selection
   }, [open]);
 
   if (!open || !baseProduct) return null;
 
-  // Handle adding or removing add-ons
-  const handleToggleAddon = (addon) => {
-    setSelectedAddons((prev) => {
-      if (prev.includes(addon.nome)) {
-        return prev.filter((item) => item !== addon.nome);
-      }
-      return [...prev, addon.nome];
-    });
+  /* ---------- Manipuladores ---------- */
+  const handleToggleAddon = (nome) => {
+    setSelectedAddons((prev) =>
+      prev.includes(nome) ? prev.filter((n) => n !== nome) : [...prev, nome]
+    );
   };
 
-  // Confirm selection and add to cart
   const handleConfirm = () => {
     if (!selectedSize) return alert("Escolha um tamanho para o pastel!");
-    // Allow "Sem Adicionais" to proceed even if no addons are selected
-    if (selectedAddons.length === 0 && !selectedSize) return alert("Escolha pelo menos um adicional ou tamanho!");
 
     const item = {
-      id: `pastel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `pastel-${Date.now()}`,
       name: `Pastel ${baseProduct.name}`,
+      size: selectedSize,
       addons: extras.filter((a) => selectedAddons.includes(a.nome)),
       qty,
       price: total,
-      size: selectedSize, // Include selected size in item
       image: baseProduct.image,
       category: "Pastel",
     };
 
-    onAdd(item); // Add item to cart
-    onClose(); // Close the modal
+    onAdd(item);
+    onClose();
   };
 
-  // UI for the modal
   const StepBadge = ({ idx, label }) => (
     <div
-      className={`flex items-center gap-2 ${step === idx ? "font-semibold" : "opacity-70"}`}
+      className={`flex items-center gap-2 ${
+        step === idx ? "font-semibold text-blue-600" : "text-gray-500"
+      }`}
     >
       <span
-        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-          step === idx ? "bg-yellow-500 text-white" : "bg-gray-200"
+        className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium ${
+          step === idx ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
         }`}
       >
         {idx}
@@ -104,137 +74,270 @@ export default function PastelBuilderModal({
     </div>
   );
 
+  /* ======================================================
+     UI
+     ====================================================== */
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] overflow-y-auto p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold"> Montar Pastel</h2>
-          <button
-            onClick={onClose}
-            className="text-sm text-gray-500 hover:underline"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 150, damping: 20 }}
+            className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl 
+                      max-h-[85vh] overflow-y-auto p-5 sm:p-6"
           >
-            Fechar
-          </button>
-        </div>
-
-        {/* Step Navigation */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
-          <StepBadge idx={1} label="Adicionais" />
-          <StepBadge idx={2} label="Resumo" />
-        </div>
-
-        {/* Step 1 - Adicionais */}
-        {step === 1 && (
-          <>
-            <h3 className="font-semibold mb-2">Escolha os Adicionais</h3>
-
-            <div className="flex flex-wrap gap-2 mb-3">
-              {/* Opção Sem Adicionais */}
-              <label
-                className={`px-3 py-1 border rounded-full cursor-pointer ${
-                  selectedAddons.length === 0 ? "bg-yellow-500 text-white" : ""
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  className="hidden"
-                  checked={selectedAddons.length === 0}
-                  onChange={() => setSelectedAddons([])} // Remove all addons if "Sem Adicionais" is selected
-                />
-                Sem Adicionais
-              </label>
-
-              {extras.map((addon) => (
-                <label
-                  key={addon.nome}
-                  className={`px-3 py-1 border rounded-full cursor-pointer ${
-                    selectedAddons.includes(addon.nome) ? "bg-yellow-500 text-white" : ""
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="hidden"
-                    checked={selectedAddons.includes(addon.nome)}
-                    onChange={() => handleToggleAddon(addon)}
-                  />
-                  {addon.nome} (+R$ {Number(addon.preco).toFixed(2)})
-                </label>
-              ))}
-            </div>
-
-            <div className="mb-4">
-              <h4 className="font-semibold">Escolha o Tamanho</h4>
-              <div className="flex gap-2">
-                {baseProduct?.sizes?.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 border rounded-lg ${
-                      selectedSize === size ? "bg-yellow-500 text-white" : "bg-gray-200"
-                    }`}
-                  >
-                    {size} (R$ {baseProduct.prices?.[size]?.toFixed(2)})
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(2)}
-                disabled={selectedSize === null} // Ensure size is selected, not dependent on addons
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg"
-              >
-                Próximo
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Step 2 - Resumo */}
-        {step === 2 && (
-          <>
-            <h3 className="font-semibold mb-2">Resumo do Pastel</h3>
-            <p className="text-sm mb-1">Adicionais: {selectedAddons.length === 0 ? "Sem Adicionais" : selectedAddons.join(", ")}</p>
-            <p className="font-bold text-lg mb-4">
-              Tamanho: {selectedSize} <br />
-              Preço Base: R$ {precoBase.toFixed(2)} <br />
-              Adicionais: R$ {precoAddons.toFixed(2)} <br />
-              Total: R$ {total.toFixed(2)}
-            </p>
-
+            {/* Header */}
             <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                Montar Pastel
+              </h2>
               <button
-                className="w-8 h-8 border rounded-full"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Fechar"
               >
-                -
-              </button>
-              <span>{qty}</span>
-              <button
-                className="w-8 h-8 border rounded-full"
-                onClick={() => setQty((q) => q + 1)}
-              >
-                +
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex justify-between">
-              <button
-                onClick={() => setStep(1)}
-                className="px-4 py-2 border rounded-lg"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg"
-              >
-                Adicionar ao Carrinho
-              </button>
+            {/* Stepper */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+              <StepBadge idx={1} label="Tamanho" />
+              <StepBadge idx={2} label="Adicionais" />
+              <StepBadge idx={3} label="Quantidade" />
+              <StepBadge idx={4} label="Resumo" />
             </div>
-          </>
+
+            {/* Conteúdo dinâmico */}
+            <div className="space-y-4">
+              {step === 1 && (
+                <StepTamanho
+                  sizes={sizes}
+                  selectedSize={selectedSize}
+                  setSelectedSize={setSelectedSize}
+                  prices={baseProduct.prices}
+                  onNext={() => setStep(2)}
+                />
+              )}
+
+              {step === 2 && (
+                <StepAddons
+                  extras={extras}
+                  selectedAddons={selectedAddons}
+                  handleToggleAddon={handleToggleAddon}
+                  onPrev={() => setStep(1)}
+                  onNext={() => setStep(3)}
+                />
+              )}
+
+              {step === 3 && (
+                <StepQuantidade
+                  qty={qty}
+                  setQty={setQty}
+                  onPrev={() => setStep(2)}
+                  onNext={() => setStep(4)}
+                />
+              )}
+
+              {step === 4 && (
+                <StepResumo
+                  baseProduct={baseProduct}
+                  selectedSize={selectedSize}
+                  selectedAddons={selectedAddons}
+                  precoBase={precoBase}
+                  precoAddons={precoAddons}
+                  total={total}
+                  qty={qty}
+                  onPrev={() => setStep(3)}
+                  onConfirm={handleConfirm}
+                />
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ======================================================
+   SUBCOMPONENTES (Steps)
+   ====================================================== */
+
+function StepTamanho({ sizes, selectedSize, setSelectedSize, prices, onNext }) {
+  return (
+    <div>
+      <h3 className="font-semibold mb-3 text-gray-900">Escolha o tamanho</h3>
+      <div className="flex flex-wrap gap-2 mb-4">
+        {sizes.map((size) => (
+          <button
+            key={size}
+            onClick={() => setSelectedSize(size)}
+            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+              selectedSize === size
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white hover:bg-gray-50"
+            }`}
+          >
+            {size} — R$ {Number(prices[size]).toFixed(2)}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={onNext}
+        disabled={!selectedSize}
+        className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+      >
+        Próximo
+      </button>
+    </div>
+  );
+}
+
+function StepAddons({ extras, selectedAddons, handleToggleAddon, onPrev, onNext }) {
+  return (
+    <div>
+      <h3 className="font-semibold mb-3 text-gray-900">Escolha os adicionais</h3>
+      {extras.length > 0 ? (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {extras.map((a, idx) => (
+            <label
+              key={idx}
+              className={`px-3 py-1 border rounded-full cursor-pointer text-sm font-medium transition-all ${
+                selectedAddons.includes(a.nome)
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="hidden"
+                checked={selectedAddons.includes(a.nome)}
+                onChange={() => handleToggleAddon(a.nome)}
+              />
+              {a.nome} (+R$ {Number(a.preco).toFixed(2)})
+            </label>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 text-sm mb-4">Nenhum adicional disponível.</p>
+      )}
+
+      <div className="flex justify-between">
+        <button
+          onClick={onPrev}
+          className="flex items-center gap-1 border rounded-lg px-3 py-2"
+        >
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </button>
+        <button
+          onClick={onNext}
+          className="flex items-center gap-1 bg-blue-600 text-white rounded-lg px-3 py-2 font-semibold hover:bg-blue-700"
+        >
+          Próximo <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StepQuantidade({ qty, setQty, onPrev, onNext }) {
+  return (
+    <div className="text-center">
+      <h3 className="font-semibold mb-3 text-gray-900">Escolha a quantidade</h3>
+
+      <div className="flex justify-center items-center gap-4 my-6">
+        <button
+          className="w-10 h-10 border rounded-full text-lg font-bold"
+          onClick={() => setQty((q) => Math.max(1, q - 1))}
+        >
+          -
+        </button>
+        <span className="font-semibold text-lg">{qty}</span>
+        <button
+          className="w-10 h-10 border rounded-full text-lg font-bold"
+          onClick={() => setQty((q) => q + 1)}
+        >
+          +
+        </button>
+      </div>
+
+      <div className="flex justify-between">
+        <button
+          onClick={onPrev}
+          className="flex items-center gap-1 border rounded-lg px-3 py-2"
+        >
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </button>
+        <button
+          onClick={onNext}
+          className="flex items-center gap-1 bg-blue-600 text-white rounded-lg px-3 py-2 font-semibold hover:bg-blue-700"
+        >
+          Próximo <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StepResumo({
+  baseProduct,
+  selectedSize,
+  selectedAddons,
+  precoBase,
+  precoAddons,
+  total,
+  qty,
+  onPrev,
+  onConfirm,
+}) {
+  return (
+    <div>
+      <h3 className="font-semibold mb-3 text-gray-900">Resumo do Pedido</h3>
+      <div className="text-sm text-gray-700 space-y-1">
+        <p>
+          <strong>Produto:</strong> {baseProduct.name}
+        </p>
+        <p>
+          <strong>Tamanho:</strong> {selectedSize}
+        </p>
+        {selectedAddons.length > 0 && (
+          <p>
+            <strong>Adicionais:</strong> {selectedAddons.join(", ")}
+          </p>
         )}
+        <p>
+          <strong>Preço base:</strong> R$ {precoBase.toFixed(2)}
+        </p>
+        <p>
+          <strong>Adicionais:</strong> R$ {precoAddons.toFixed(2)}
+        </p>
+        <p className="font-bold text-lg text-gray-900 mt-2">
+          Total: R$ {total.toFixed(2)}
+        </p>
+      </div>
+
+      <div className="flex justify-between mt-6">
+        <button
+          onClick={onPrev}
+          className="flex items-center gap-1 border rounded-lg px-3 py-2"
+        >
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </button>
+        <button
+          onClick={onConfirm}
+          className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 font-semibold flex items-center gap-1"
+        >
+          Confirmar Pedido
+        </button>
       </div>
     </div>
   );
