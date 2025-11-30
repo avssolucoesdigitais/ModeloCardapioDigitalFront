@@ -131,11 +131,11 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
       {/* 🔹 Responsivo: tela cheia no mobile, sidebar no desktop */}
       <div className="w-full sm:w-[420px] h-full bg-white shadow-2xl flex flex-col animate-slideIn">
         {/* Cabeçalho */}
-        <div className="flex justify-between items-center p-4 border-b bg-green-600 text-white">
+        <div className="flex justify-between items-center p-4 border-b bg-blue-600 text-white">
           <h2 className="text-lg font-semibold">Minha Conta</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-green-700 rounded-full transition"
+            className="p-2 hover:bg-blue-700 rounded-full transition"
           >
             <X />
           </button>
@@ -147,7 +147,7 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
             onClick={() => setTab("cadastro")}
             className={`flex-1 py-3 font-medium ${
               tab === "cadastro"
-                ? "border-b-4 border-green-600 text-green-600"
+                ? "border-b-4 border-blue-600 text-blue-600"
                 : "text-gray-500 hover:text-black"
             }`}
           >
@@ -157,7 +157,7 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
             onClick={() => setTab("pedidos")}
             className={`flex-1 py-3 font-medium ${
               tab === "pedidos"
-                ? "border-b-4 border-green-600 text-green-600"
+                ? "border-b-4 border-blue-600 text-blue-600"
                 : "text-gray-500 hover:text-black"
             }`}
           >
@@ -174,20 +174,20 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
                 placeholder="Telefone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="text"
                 placeholder="Nome completo"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
 
               <select
                 value={bairro}
                 onChange={(e) => setBairro(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione um bairro...</option>
                 {bairrosDisponiveis.map((b, idx) => (
@@ -202,27 +202,27 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
                 placeholder="Rua"
                 value={rua}
                 onChange={(e) => setRua(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="text"
                 placeholder="Número"
                 value={numero}
                 onChange={(e) => setNumero(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="text"
                 placeholder="Ponto de referência"
                 value={referencia}
                 onChange={(e) => setReferencia(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
 
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition"
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
               >
                 {loading ? "Salvando..." : "Salvar"}
               </button>
@@ -247,7 +247,7 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
                         <span
                           className={`text-xs px-2 py-1 rounded ${
                             p.status === "FINALIZADO"
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-green-100 text-blue-700"
                               : p.status === "EM ANDAMENTO"
                               ? "bg-blue-100 text-blue-700"
                               : "bg-yellow-100 text-yellow-700"

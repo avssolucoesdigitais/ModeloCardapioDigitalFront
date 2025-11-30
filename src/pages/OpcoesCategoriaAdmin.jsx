@@ -22,7 +22,7 @@ function OpcoesCategoriaAdmin() {
       {/* Cabeçalho */}
       <header className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-          ⚙️ Configurar Cardápio
+          Configurar Cardápio
         </h1>
         <p className="text-gray-500 mt-1">
           Gerencie produtos, adicionais e opções por categoria.

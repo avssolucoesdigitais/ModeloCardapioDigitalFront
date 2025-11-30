@@ -16,7 +16,7 @@ function formatBRL(value) {
 export default function CartPanel({ open, onClose, cart, onCheckout }) {
   if (!open) return null;
 
-  // 🔥 calcula o total com parser (independe de cart.subtotal)
+  //  calcula o total com parser (independe de cart.subtotal)
   const totalCalc = cart.items.reduce(
     (acc, l) => acc + (l.qty || 1) * parsePreco(l.price),
     0
@@ -89,14 +89,14 @@ export default function CartPanel({ open, onClose, cart, onCheckout }) {
           ))}
         </div>
 
-        {/* 🔥 Total calculado com parser */}
+        {/* Total calculado com parser */}
         <div className="mt-4 border-t pt-4 flex items-center justify-between text-gray-700">
           <div className="text-gray-600">Total</div>
           <div className="text-lg font-semibold">{formatBRL(totalCalc)}</div>
         </div>
 
         {cart.items.length > 0 && (
-          <button onClick={onCheckout} className="mt-4 w-full bg-green-600 text-white py-3 rounded-2xl hover:opacity-90">
+          <button onClick={onCheckout} className="mt-4 w-full bg-blue-600 text-white py-3 rounded-2xl hover:opacity-90">
             Finalizar Pedido no WhatsApp
           </button>
         )}
