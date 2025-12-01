@@ -1,46 +1,77 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
+const MotionDiv = motion.div;
+
 /* ======================================================
-   MODAL DE MONTAGEM DE PASTEL (UX igual ao da Pizza)
+   MODAL DE MONTAGEM DE PASTEL (igual ao da Pizza)
    ====================================================== */
-export default function PastelBuilderModal({ open, onClose, baseProduct, onAdd }) {
+export default function PastelBuilderModal({
+  open,
+  onClose,
+  baseProduct,
+  onAdd,
+  preset,
+}) {
   const [step, setStep] = useState(1);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [qty, setQty] = useState(1);
 
+  // Tamanhos disponíveis
   const sizes = Object.keys(baseProduct?.prices || {});
-  const extras = useMemo(() => baseProduct?.adicionais || [], [baseProduct]);
 
+  // Adicionais
+  const extras = useMemo(
+    () => baseProduct?.adicionais || [],
+    [baseProduct]
+  );
+
+  // Preços
   const precoBase = Number(baseProduct?.prices?.[selectedSize] || 0);
+
   const precoAddons = selectedAddons.reduce((acc, nome) => {
     const addon = extras.find((a) => a.nome === nome);
     return acc + Number(addon?.preco || 0);
   }, 0);
+
   const total = (precoBase + precoAddons) * qty;
 
-  /* ---------- Efeitos ---------- */
+  /* ======================================================
+     USE EFFECT – PRESET + TAMANHO INICIAL
+     ====================================================== */
   useEffect(() => {
     if (!open) return;
+
     setStep(1);
-    setSelectedSize("");
     setSelectedAddons([]);
-    setQty(1);
-  }, [open]);
+    setQty(preset?.qty || 1);
+
+    const keys = Object.keys(baseProduct?.prices || {});
+    const oneSizeOnly = keys.length === 1 ? keys[0] : "";
+
+    const presetSize =
+      preset?.size && keys.includes(preset.size) ? preset.size : "";
+
+    setSelectedSize(presetSize || oneSizeOnly || "");
+  }, [open, baseProduct, preset]);
 
   if (!open || !baseProduct) return null;
 
-  /* ---------- Manipuladores ---------- */
+  /* ======================================================
+     HANDLERS
+     ====================================================== */
   const handleToggleAddon = (nome) => {
     setSelectedAddons((prev) =>
-      prev.includes(nome) ? prev.filter((n) => n !== nome) : [...prev, nome]
+      prev.includes(nome)
+        ? prev.filter((n) => n !== nome)
+        : [...prev, nome]
     );
   };
 
   const handleConfirm = () => {
-    if (!selectedSize) return alert("Escolha um tamanho para o pastel!");
+    if (!selectedSize) return alert("Escolha um tamanho!");
 
     const item = {
       id: `pastel-${Date.now()}`,
@@ -65,7 +96,9 @@ export default function PastelBuilderModal({ open, onClose, baseProduct, onAdd }
     >
       <span
         className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-medium ${
-          step === idx ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+          step === idx
+            ? "bg-blue-600 text-white"
+            : "bg-gray-200 text-gray-600"
         }`}
       >
         {idx}
@@ -80,13 +113,13 @@ export default function PastelBuilderModal({ open, onClose, baseProduct, onAdd }
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
         >
-          <motion.div
+          <MotionDiv
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
@@ -102,7 +135,6 @@ export default function PastelBuilderModal({ open, onClose, baseProduct, onAdd }
               <button
                 onClick={onClose}
                 className="text-gray-500 hover:text-gray-700"
-                aria-label="Fechar"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -116,8 +148,9 @@ export default function PastelBuilderModal({ open, onClose, baseProduct, onAdd }
               <StepBadge idx={4} label="Resumo" />
             </div>
 
-            {/* Conteúdo dinâmico */}
+            {/* Conteúdo */}
             <div className="space-y-4">
+
               {step === 1 && (
                 <StepTamanho
                   sizes={sizes}
@@ -160,28 +193,30 @@ export default function PastelBuilderModal({ open, onClose, baseProduct, onAdd }
                   onConfirm={handleConfirm}
                 />
               )}
+
             </div>
-          </motion.div>
-        </motion.div>
+          </MotionDiv>
+        </MotionDiv>
       )}
     </AnimatePresence>
   );
 }
 
 /* ======================================================
-   SUBCOMPONENTES (Steps)
+   SUBCOMPONENTES
    ====================================================== */
 
 function StepTamanho({ sizes, selectedSize, setSelectedSize, prices, onNext }) {
   return (
     <div>
       <h3 className="font-semibold mb-3 text-gray-900">Escolha o tamanho</h3>
+
       <div className="flex flex-wrap gap-2 mb-4">
         {sizes.map((size) => (
           <button
             key={size}
             onClick={() => setSelectedSize(size)}
-            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+            className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
               selectedSize === size
                 ? "bg-blue-600 text-white border-blue-600"
                 : "bg-white hover:bg-gray-50"
@@ -191,6 +226,7 @@ function StepTamanho({ sizes, selectedSize, setSelectedSize, prices, onNext }) {
           </button>
         ))}
       </div>
+
       <button
         onClick={onNext}
         disabled={!selectedSize}
@@ -206,12 +242,13 @@ function StepAddons({ extras, selectedAddons, handleToggleAddon, onPrev, onNext 
   return (
     <div>
       <h3 className="font-semibold mb-3 text-gray-900">Escolha os adicionais</h3>
+
       {extras.length > 0 ? (
         <div className="flex flex-wrap gap-2 mb-4">
           {extras.map((a, idx) => (
             <label
               key={idx}
-              className={`px-3 py-1 border rounded-full cursor-pointer text-sm font-medium transition-all ${
+              className={`px-3 py-1 border rounded-full cursor-pointer ${
                 selectedAddons.includes(a.nome)
                   ? "bg-blue-600 text-white border-blue-600"
                   : "hover:bg-gray-50"
@@ -238,6 +275,7 @@ function StepAddons({ extras, selectedAddons, handleToggleAddon, onPrev, onNext 
         >
           <ChevronLeft className="w-4 h-4" /> Voltar
         </button>
+
         <button
           onClick={onNext}
           className="flex items-center gap-1 bg-blue-600 text-white rounded-lg px-3 py-2 font-semibold hover:bg-blue-700"
@@ -252,7 +290,7 @@ function StepAddons({ extras, selectedAddons, handleToggleAddon, onPrev, onNext 
 function StepQuantidade({ qty, setQty, onPrev, onNext }) {
   return (
     <div className="text-center">
-      <h3 className="font-semibold mb-3 text-gray-900">Escolha a quantidade</h3>
+      <h3 className="font-semibold mb-3 text-gray-900">Quantidade</h3>
 
       <div className="flex justify-center items-center gap-4 my-6">
         <button
@@ -261,7 +299,9 @@ function StepQuantidade({ qty, setQty, onPrev, onNext }) {
         >
           -
         </button>
+
         <span className="font-semibold text-lg">{qty}</span>
+
         <button
           className="w-10 h-10 border rounded-full text-lg font-bold"
           onClick={() => setQty((q) => q + 1)}
@@ -271,15 +311,13 @@ function StepQuantidade({ qty, setQty, onPrev, onNext }) {
       </div>
 
       <div className="flex justify-between">
-        <button
-          onClick={onPrev}
-          className="flex items-center gap-1 border rounded-lg px-3 py-2"
-        >
+        <button onClick={onPrev} className="border rounded-lg px-3 py-2 flex items-center gap-1">
           <ChevronLeft className="w-4 h-4" /> Voltar
         </button>
+
         <button
           onClick={onNext}
-          className="flex items-center gap-1 bg-blue-600 text-white rounded-lg px-3 py-2 font-semibold hover:bg-blue-700"
+          className="bg-blue-600 text-white rounded-lg px-3 py-2 font-semibold hover:bg-blue-700 flex items-center gap-1"
         >
           Próximo <ChevronRight className="w-4 h-4" />
         </button>
@@ -302,36 +340,28 @@ function StepResumo({
   return (
     <div>
       <h3 className="font-semibold mb-3 text-gray-900">Resumo do Pedido</h3>
+
       <div className="text-sm text-gray-700 space-y-1">
-        <p>
-          <strong>Produto:</strong> {baseProduct.name}
-        </p>
-        <p>
-          <strong>Tamanho:</strong> {selectedSize}
-        </p>
+        <p><strong>Produto:</strong> {baseProduct.name}</p>
+        <p><strong>Tamanho:</strong> {selectedSize}</p>
+
         {selectedAddons.length > 0 && (
-          <p>
-            <strong>Adicionais:</strong> {selectedAddons.join(", ")}
-          </p>
+          <p><strong>Adicionais:</strong> {selectedAddons.join(", ")}</p>
         )}
-        <p>
-          <strong>Preço base:</strong> R$ {precoBase.toFixed(2)}
-        </p>
-        <p>
-          <strong>Adicionais:</strong> R$ {precoAddons.toFixed(2)}
-        </p>
+
+        <p><strong>Preço base:</strong> R$ {precoBase.toFixed(2)}</p>
+        <p><strong>Adicionais:</strong> R$ {precoAddons.toFixed(2)}</p>
+
         <p className="font-bold text-lg text-gray-900 mt-2">
           Total: R$ {total.toFixed(2)}
         </p>
       </div>
 
       <div className="flex justify-between mt-6">
-        <button
-          onClick={onPrev}
-          className="flex items-center gap-1 border rounded-lg px-3 py-2"
-        >
+        <button onClick={onPrev} className="border rounded-lg px-3 py-2 flex items-center gap-1">
           <ChevronLeft className="w-4 h-4" /> Voltar
         </button>
+
         <button
           onClick={onConfirm}
           className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 font-semibold flex items-center gap-1"

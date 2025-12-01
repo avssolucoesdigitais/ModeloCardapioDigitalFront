@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+const MotionDiv = motion.div;
+
+
 
 // Helper para preço
 function parsePreco(preco) {
@@ -112,14 +115,13 @@ export default function BatataBuilderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-2 sm:p-4">
-      <motion.div
+      <MotionDiv
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
         className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden"
       >
-        {/* Conteúdo do Modal */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-bold"> Montar Batata</h2>
           <button
@@ -162,7 +164,7 @@ export default function BatataBuilderModal({
             ✅ Confirmar ({`R$ ${total.toFixed(2)}`})
           </button>
         </div>
-      </motion.div>
+      </MotionDiv>
     </div>
   );
 }

@@ -206,93 +206,99 @@ export default function Cardapio() {
   }, [groupedProducts]);
 
   // ---------- ADICIONAR AO CARRINHO (useCallback) ----------
-  const makeOnAdd = useCallback(
-    (p) => (itemFromCard) => {
-      // Bloqueia pedidos fora do horário e abre sub-tela
-      if (!lojaAberta) {
-        setHorarioModalOpen(true);
-        return;
-      }
+  // Dentro de makeOnAdd
 
-      const catNorm = normalizeCategory(p.category);
+const makeOnAdd = useCallback(
+  (p) => (itemFromCard) => {
+    if (!lojaAberta) {
+      setHorarioModalOpen(true);
+      return;
+    }
 
-      // PIZZA → abre modal
-      if (catNorm === "pizza") {
-        setBasePizza(p);
-        setPizzaPreset({
+    const catNorm = normalizeCategory(p.category);
+
+    // ---- PIZZA ----
+    if (catNorm === "pizza") {
+      setBasePizza(p);
+      setPizzaPreset({
+        size: itemFromCard?.size || "",
+        firstFlavorId: itemFromCard?.firstFlavorId || p.id,
+      });
+      setPizzaOpen(true);
+      return;
+    }
+
+    // ---- HAMBÚRGUER ----
+    if (catNorm === "hamburguer") {
+      if (p.montar === true) {
+        setBaseHamb(p);
+        setHambPreset({
           size: itemFromCard?.size || "",
           firstFlavorId: itemFromCard?.firstFlavorId || p.id,
         });
-        setPizzaOpen(true);
+        setHambOpen(true);
         return;
       }
 
-      // HAMBÚRGUER → montável ou simples
-      if (catNorm === "hamburguer") {
-        if (p.montar === true) {
-          setBaseHamb(p);
-          setHambPreset({
-            size: itemFromCard?.size || "",
-            firstFlavorId: itemFromCard?.firstFlavorId || p.id,
-          });
-          setHambOpen(true);
-          return;
-        }
-
-        cart.add({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          description: p.description,
-          price:
-            itemFromCard?.price ??
-            p.preco ??
-            p.price ??
-            (p.prices ? Object.values(p.prices)[0] : 0),
-          size: itemFromCard?.size || "único",
-          image: p.image,
-          qty: itemFromCard?.qty ?? 1,
-        });
-        return;
-      }
-
-      // PASTEL → modal ou simples
-      if (catNorm === "pastel") {
-        if (p.montar === true) {
-          setBasePastel(p);
-          setPastelPreset({
-            size: itemFromCard?.size || "",
-            firstFlavorId: itemFromCard?.firstFlavorId || p.id,
-          });
-          setPastelOpen(true);
-          return;
-        }
-
-        cart.add({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          description: p.description,
-          price:
-            itemFromCard?.price ??
-            p.preco ??
-            p.price ??
-            (p.prices ? Object.values(p.prices)[0] : 0),
-          size: itemFromCard?.size || "único",
-          image: p.image,
-          qty: itemFromCard?.qty ?? 1,
-        });
-        return;
-      }
-
-      // Demais categorias simples
       cart.add({
-        ...itemFromCard,
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        description: p.description,
+        price:
+          itemFromCard?.price ??
+          p.preco ??
+          p.price ??
+          (p.prices ? Object.values(p.prices)[0] : 0),
+        size: itemFromCard?.size || "único",
+        image: p.image,
         qty: itemFromCard?.qty ?? 1,
       });
-    },
-    [lojaAberta, cart]
-  );
+      return;
+    }
+
+    // ---- PASTEL (correção) ----
+    if (catNorm === "pastel") {
+      const hasSizes = p.prices && Object.keys(p.prices).length > 0;
+      const hasAddons = p.adicionais && p.adicionais.length > 0;
+
+      const shouldUseModal = p.montar === true || hasSizes || hasAddons;
+
+      if (shouldUseModal) {
+        setBasePastel(p);
+        setPastelPreset({
+          size: itemFromCard?.size || "",
+          firstFlavorId: itemFromCard?.firstFlavorId || p.id,
+        });
+        setPastelOpen(true);
+        return;
+      }
+
+      cart.add({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        description: p.description,
+        price:
+          itemFromCard?.price ??
+          p.preco ??
+          p.price ??
+          (p.prices ? Object.values(p.prices)[0] : 0),
+        size: itemFromCard?.size || "único",
+        image: p.image,
+        qty: itemFromCard?.qty ?? 1,
+      });
+      return;
+    }
+
+    // ---- OUTRAS CATEGORIAS ----
+    cart.add({
+      ...itemFromCard,
+      qty: itemFromCard?.qty ?? 1,
+    });
+  },
+  [lojaAberta, cart]
+);
 
   const handleCheckout = useCallback(() => {
     if (!lojaAberta) {

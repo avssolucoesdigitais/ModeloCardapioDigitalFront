@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+const MotionDiv = motion.div;
+
 
 /* ======================================================
    MODAL DE MONTAGEM DE HAMBÚRGUER (igual ao do Pastel)
@@ -85,13 +87,13 @@ export default function HamburguerBuilderModal({
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
         >
-          <motion.div
+          <MotionDiv
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
@@ -166,8 +168,8 @@ export default function HamburguerBuilderModal({
                 />
               )}
             </div>
-          </motion.div>
-        </motion.div>
+          </MotionDiv>
+        </MotionDiv>
       )}
     </AnimatePresence>
   );
