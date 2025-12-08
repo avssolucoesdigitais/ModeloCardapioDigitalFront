@@ -52,14 +52,13 @@ export default function ProductCard({ p, onAdd }) {
     return (basePrice + addonsTotal) * qty;
   };
 
-  // 🔥 Correção: agora o pastel abre modal se tiver tamanhos ou adicionais!
+  
   const handleAdd = () => {
     const hasSizes = sizes.length > 0;
     const hasAddons = p.adicionais && p.adicionais.length > 0;
 
     const shouldOpenModal =
       category === "pizza" ||
-      (category === "hamburguer" && p.montar) ||
       (category === "pastel" && (p.montar || hasSizes || hasAddons));
 
     if (shouldOpenModal) {

@@ -15,7 +15,6 @@ import { FaInstagram } from "react-icons/fa";
 
 // Modais
 import PizzaBuilderModal from "../components/BuiderModal/PizzaBuilderModal";
-import HamburguerBuilderModal from "../components/BuiderModal/BurgerBuilderModal";
 import PastelBuilderModal from "../components/BuiderModal/PastelBuilderModal.jsx";
 
 /* ====== CONSTANTES / HELPERS FORA DO COMPONENTE ====== */
@@ -100,10 +99,6 @@ export default function Cardapio() {
   const [basePizza, setBasePizza] = useState(null);
   const [pizzaPreset, setPizzaPreset] = useState(null);
 
-  // Hamburguer
-  const [hambOpen, setHambOpen] = useState(false);
-  const [baseHamb, setBaseHamb] = useState(null);
-  const [hambPreset, setHambPreset] = useState(null);
 
   // Pastel
   const [pastelOpen, setPastelOpen] = useState(false);
@@ -228,34 +223,6 @@ const makeOnAdd = useCallback(
       return;
     }
 
-    // ---- HAMBÚRGUER ----
-    if (catNorm === "hamburguer") {
-      if (p.montar === true) {
-        setBaseHamb(p);
-        setHambPreset({
-          size: itemFromCard?.size || "",
-          firstFlavorId: itemFromCard?.firstFlavorId || p.id,
-        });
-        setHambOpen(true);
-        return;
-      }
-
-      cart.add({
-        id: p.id,
-        name: p.name,
-        category: p.category,
-        description: p.description,
-        price:
-          itemFromCard?.price ??
-          p.preco ??
-          p.price ??
-          (p.prices ? Object.values(p.prices)[0] : 0),
-        size: itemFromCard?.size || "único",
-        image: p.image,
-        qty: itemFromCard?.qty ?? 1,
-      });
-      return;
-    }
 
     // ---- PASTEL (correção) ----
     if (catNorm === "pastel") {
@@ -460,17 +427,7 @@ const makeOnAdd = useCallback(
         onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
       />
 
-      <HamburguerBuilderModal
-        open={hambOpen}
-        onClose={() => {
-          setHambOpen(false);
-          setBaseHamb(null);
-          setHambPreset(null);
-        }}
-        baseProduct={baseHamb}
-        preset={hambPreset}
-        onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
-      />
+    
 
       <PastelBuilderModal
         open={pastelOpen}
