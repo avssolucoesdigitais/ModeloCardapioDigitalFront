@@ -10,9 +10,19 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
-import { FiBell, FiBellOff, FiPrinter, FiTrash2 } from "react-icons/fi";
+import { FiBell, FiBellOff, FiPrinter, FiTrash2, FiClock, FiCheck, FiPlay  } from "react-icons/fi";
+import { motion, AnimatePresence } from "framer-motion";
 
 import notificacaoSound from "../sound/notificação.mp3";
+
+// Função para exibir tempo decorrido
+const getRelativeTime = (timestamp) => {
+  if (!timestamp) return "";
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const diff = Math.floor((new Date() - date) / 60000);
+  if (diff < 1) return "Agora";
+  return `há ${diff} min`;
+};
 
 // 🔹 Helper para garantir que preço nunca vire NaN
 function parsePreco(value) {
@@ -26,7 +36,7 @@ function parsePreco(value) {
 
 export default function OrdersAdmin() {
   const [orders, setOrders] = useState([]);
-  const [soundEnabled, setSoundEnabled] = useState(false); // inicia estável
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const audioRef = useRef(null);
   const prevIdsRef = useRef([]);
 
@@ -228,160 +238,178 @@ export default function OrdersAdmin() {
   );
 
   return (
-    <div className="bg-gray-50 min-h-screen p-4 sm:p-6 md:p-8">
+    <div className="bg-slate-50 min-h-screen p-4 md:p-8 font-sans text-slate-900">
       <audio ref={audioRef} src={notificacaoSound} preload="auto" />
 
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-            📦 Painel de Pedidos
-          </h1>
+        {/* Header com Glassmorphism */}
+        <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-200 gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-800">Painel de pedidos</h1>
+            <p className="text-slate-500 font-medium">Gestão de pedidos em tempo real</p>
+          </div>
+          
           <button
             onClick={toggleSound}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition w-full sm:w-auto ${
-              soundEnabled ? "bg-green-500 text-white" : "bg-gray-400 text-white"
+            className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-bold transition-all active:scale-95 ${
+              soundEnabled 
+                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" 
+                : "bg-slate-200 text-slate-600"
             }`}
           >
-            <span className="inline-flex items-center">
-              {soundEnabled ? <FiBell key="bell" /> : <FiBellOff key="bellOff" />}
-            </span>
-            {soundEnabled ? "Som Ativado" : "Som Desativado"}
+            {soundEnabled ? <FiBell className="animate-bounce" /> : <FiBellOff />}
+            {soundEnabled ? "Notificações Ligadas" : "Som Desativado"}
           </button>
-        </div>
+        </header>
 
-        {/* Dashboard */}
-        <section>
-          <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800">
-            📊 Vendas do Dia ({hoje})
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="p-4 rounded-xl bg-blue-100 text-blue-800 shadow-sm">
-              <p className="text-sm">Total de Pedidos</p>
-              <p className="text-2xl font-bold">{totalPedidosHoje}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-green-100 text-green-800 shadow-sm">
-              <p className="text-sm">Finalizados</p>
-              <p className="text-2xl font-bold">{totalFinalizados}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-purple-100 text-purple-800 shadow-sm sm:col-span-2 lg:col-span-1">
-              <p className="text-sm">Faturamento</p>
-              <p className="text-2xl font-bold">R$ {valorTotalHoje.toFixed(2)}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-pink-100 text-pink-800 shadow-sm sm:col-span-2 lg:col-span-1">
-              <p className="text-sm">Ticket Médio</p>
-              <p className="text-2xl font-bold">R$ {ticketMedio.toFixed(2)}</p>
-            </div>
-          </div>
+        {/* Dashboard de Métricas Rápidas */}
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total Hoje" value={totalPedidosHoje} color="blue" />
+          <StatCard label="Finalizados" value={totalFinalizados} color="emerald" />
+          <StatCard label="Faturamento" value={`R$ ${valorTotalHoje.toFixed(2)}`} color="purple" />
+          <StatCard label="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} color="pink" />
         </section>
 
-        {/* Pedidos Ativos */}
-        <section className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800">
-            Pedidos Ativos
-          </h2>
-          {ativos.length === 0 && (
-            <p className="text-gray-500 text-center text-base sm:text-lg py-6">
-              Nenhum pedido ativo 🚫
-            </p>
-          )}
-          <div className="grid gap-6 sm:grid-cols-2">
-            {ativos.map((o) => {
-              const status = (o.status || "").toUpperCase();
-              return (
-                <article
-                  key={o.id}
-                  className="p-4 rounded-xl border shadow-sm bg-gray-50 hover:shadow-md transition flex flex-col justify-between"
-                >
-                  <div>
-                    <p className="font-semibold text-gray-700">
-                      👤 {o.customer || "Cliente"} —{" "}
-                      <span className="text-yellow-600">
-                        #{o.orderNumber || o.id.slice(-4)}
-                      </span>
-                    </p>
-                    <p className="mt-1 font-bold text-lg text-green-600">
-                      💰 R$ {parsePreco(o.total).toFixed(2)}
-                    </p>
-
-                    {/* 🔹 Dados extras */}
-                    <p className="text-sm text-gray-600">📱 {o.phone || "-"}</p>
-                    <p className="text-sm text-gray-600">
-                      🏠 {o.address || "Endereço não informado"}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      💳 {o.paymentMethod || "-"}
-                    </p>
-                    {o.observacao && (
-                      <p className="text-sm text-red-600 font-semibold">
-                        📝 {o.observacao}
-                      </p>
-                    )}
-
-                    {/* 🔹 Lista de itens */}
-                    <div className="mt-2 text-sm text-gray-700">
-                      {(o.items || []).map((item, idx) => (
-                        <div key={idx} className="border-t pt-1 mt-1">
-                          {item.qty}x {item.name}{" "}
-                          {item.size ? `(${item.size})` : ""}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Botões */}
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => updateStatus(o.id, "PENDENTE")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex-1 sm:flex-none text-center ${
-                        status === "PENDENTE"
-                          ? "bg-yellow-500 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      ⏳ Pendente
-                    </button>
-                    <button
-                      onClick={() => updateStatus(o.id, "EM ANDAMENTO")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex-1 sm:flex-none text-center ${
-                        status === "EM ANDAMENTO"
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      🔄 Em andamento
-                    </button>
-                    <button
-                      onClick={() => updateStatus(o.id, "FINALIZADO")}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium flex-1 sm:flex-none text-center bg-green-500 text-white hover:bg-green-600"
-                    >
-                      ✅ Finalizar
-                    </button>
-                    <button
-                      onClick={() => printOrderKitchen(o)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium flex-1 sm:flex-none text-center bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center gap-1"
-                    >
-                      <FiPrinter /> Cozinha
-                    </button>
-                    <button
-                      onClick={() => printOrderDelivery(o)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium flex-1 sm:flex-none text-center bg-gray-700 text-white hover:bg-gray-800 flex items-center justify-center gap-1"
-                    >
-                      <FiPrinter /> Entrega
-                    </button>
-                    <button
-                      onClick={() => deleteOrder(o.id)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium flex-1 sm:flex-none text-center bg-red-500 text-white hover:bg-red-600 flex items-center justify-center gap-1"
-                    >
-                      <FiTrash2 /> Excluir
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
+        {/* Lista de Pedidos Ativos */}
+        <main>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              📌 Pedidos em Aberto 
+              <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">{ativos.length}</span>
+            </h2>
           </div>
-        </section>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
+            <AnimatePresence>
+              {ativos.map((o) => (
+                <OrderCard 
+                  key={o.id} 
+                  order={o} 
+                  updateStatus={updateStatus}
+                  printKitchen={printOrderKitchen}
+                  printDelivery={printOrderDelivery}
+                  deleteOrder={deleteOrder}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        </main>
       </div>
     </div>
+  );
+}
+
+// Sub-componente para os Cards de Pedido
+function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrder }) {
+  const status = (order.status || "PENDENTE").toUpperCase();
+  const isPendente = status === "PENDENTE";
+
+  return (
+    <motion.article 
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`relative overflow-hidden bg-white rounded-[2rem] border-2 transition-all ${
+        isPendente ? "border-orange-200 shadow-orange-100" : "border-blue-100 shadow-blue-50"
+      } shadow-xl p-6`}
+    >
+      {/* Indicador Lateral de Status */}
+      <div className={`absolute left-0 top-0 bottom-0 w-2 ${isPendente ? "bg-orange-500" : "bg-blue-500"}`} />
+
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <span className="text-xs font-black uppercase tracking-widest text-slate-400">Pedido</span>
+          <h3 className="text-2xl font-black text-slate-800">#{order.orderNumber || order.id.slice(-4)}</h3>
+          <div className="flex items-center gap-1 text-slate-500 text-sm font-bold">
+            <FiClock /> {getRelativeTime(order.createdAt)}
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-black text-emerald-600">R$ {parsePreco(order.total).toFixed(2)}</p>
+          <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-[10px] font-bold uppercase italic">
+            {order.paymentMethod}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+        <p className="font-bold text-slate-700 flex items-center gap-2">👤 {order.customer || "Cliente Final"}</p>
+        <div className="text-sm text-slate-600 divide-y divide-slate-200">
+          {(order.items || []).map((item, idx) => (
+            <div key={idx} className="py-2 flex justify-between">
+              <span><b className="text-blue-600">{item.qty}x</b> {item.name} <small className="text-slate-400">{item.size}</small></span>
+            </div>
+          ))}
+        </div>
+        {order.observacao && (
+          <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+            <p className="text-xs font-black text-orange-600 uppercase">Observação:</p>
+            <p className="text-sm text-orange-800 font-medium italic">"{order.observacao}"</p>
+          </div>
+        )}
+      </div>
+
+      {/* Ações do Fluxo */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <ActionButton 
+          active={status === "PENDENTE"} 
+          onClick={() => updateStatus(order.id, "PENDENTE")}
+          label="Pendente" icon={<FiClock />} color="orange"
+        />
+        <ActionButton 
+          active={status === "EM ANDAMENTO"} 
+          onClick={() => updateStatus(order.id, "EM ANDAMENTO")}
+          label="Preparar" icon={<FiPlay />} color="blue"
+        />
+        <ActionButton 
+          active={false} 
+          onClick={() => updateStatus(order.id, "FINALIZADO")}
+          label="Concluir" icon={<FiCheck />} color="emerald"
+        />
+      </div>
+
+      {/* Rodapé Utilitário */}
+      <div className="flex gap-2 border-t border-slate-100 pt-4">
+        <button onClick={() => printKitchen(order)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
+          <FiPrinter /> Cozinha
+        </button>
+        <button onClick={() => printDelivery(order)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
+          <FiPrinter /> Entrega
+        </button>
+        <button onClick={() => deleteOrder(order.id)} className="px-4 py-2 bg-red-50 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all">
+          <FiTrash2 />
+        </button>
+      </div>
+    </motion.article>
+  );
+}
+
+// Componentes auxiliares de UI
+function StatCard({ label, value, color }) {
+  const colors = {
+    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    purple: "bg-purple-50 text-purple-700 border-purple-100",
+    pink: "bg-pink-50 text-pink-700 border-pink-100",
+  };
+  return (
+    <div className={`p-6 rounded-[2rem] border-2 shadow-sm ${colors[color]}`}>
+      <p className="text-xs font-black uppercase tracking-widest opacity-70 mb-1">{label}</p>
+      <p className="text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function ActionButton({ active, onClick, label, icon, color }) {
+  const colorMap = {
+    orange: active ? "bg-orange-500 text-white shadow-lg shadow-orange-200" : "bg-orange-50 text-orange-500",
+    blue: active ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-blue-50 text-blue-600",
+    emerald: "bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+  };
+  return (
+    <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 p-3 rounded-2xl transition-all font-bold text-[10px] uppercase ${colorMap[color]}`}>
+      <span className="text-lg">{icon}</span>
+      {label}
+    </button>
   );
 }
