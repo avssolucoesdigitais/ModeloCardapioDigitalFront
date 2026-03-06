@@ -1,11 +1,13 @@
-import { ShoppingCart, Search, Menu, X } from "lucide-react";
+import { ShoppingCart, Search, Menu, X, User } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import ContaPanel from "./ContaPanel";
 
 export default function Header({ onCartClick, cartCount = 0, onSearchChange, config }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [contaOpen, setContaOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState(null);
 
   const primary = config?.primaryColor || "#000000";
@@ -14,156 +16,149 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
   const logoUrl = config?.logoUrl || "/default-logo.png";
   const whatsapp = config?.whatsapp || "558999999999";
 
+  // Efeito de scroll para deixar o header flutuante
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("userPhone");
-    if (savedUser) {
-      setUser({ telefone: savedUser });
-    }
+    if (savedUser) setUser({ telefone: savedUser });
   }, []);
 
   return (
-    <header style={{ backgroundColor: primary }} className="text-white shadow relative">
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-6">
-        {/* Logo + Nome */}
-        <div className="flex items-center gap-2">
-          <img
-            src={logoUrl}
-            alt="Logo"
-            className="h-12 w-auto object-contain rounded-md shadow"
-          />
-          <span className="text-2xl font-bold">{nomeLoja}</span>
+    <header
+      style={{ 
+        backgroundColor: isScrolled ? `${primary}EE` : primary,
+        backdropFilter: isScrolled ? "blur(10px)" : "none" 
+      }}
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        isScrolled ? "py-2 shadow-lg" : "py-4"
+      } text-white`}
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-8">
+        
+        {/* Logo Section */}
+        <div className="flex items-center gap-3 cursor-pointer group">
+          <div className="shadow-inner transition-transform group-hover:scale-110">
+            <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />
+          </div>
+          <span className="text-xl font-black tracking-tight hidden sm:block">
+            {nomeLoja}
+          </span>
         </div>
 
-        {/* Busca Desktop */}
-        <div className="flex flex-1 max-w-md relative mx-6 hidden md:flex">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white" />
+        {/* Busca Centralizada (Desktop) */}
+        <div className="hidden md:flex flex-1 max-w-md mx-8 relative">
+          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/60" />
           <input
             type="text"
-            placeholder="Buscar produto..."
+            placeholder="O que você busca hoje?"
             onChange={(e) => onSearchChange?.(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 rounded-xl border text-white focus:outline-none focus:ring-2 bg-transparent placeholder-white"
+            className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-white/10 border border-white/20 text-sm focus:bg-white focus:text-black transition-all outline-none placeholder:text-white/50"
           />
         </div>
 
-        {/* Ações Desktop */}
-        <div className="hidden md:flex items-center gap-3">
-          {/* Botão Cadastro/Login */}
-          <button
-            style={{ backgroundColor: secondary, color: primary }}
-            className="px-4 py-2 rounded-xl shadow hover:opacity-90"
-            onClick={() => setContaOpen(true)}
-          >
-            {user?.nome ? `Olá, ${user.nome}` : "Faça seu cadastro"}
-          </button>
-
-          {/* Botão Carrinho */}
-          <button
-            style={{ backgroundColor: secondary, color: primary }}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-xl shadow hover:opacity-90"
-            onClick={onCartClick}
-          >
-            <div className="relative">
-              <ShoppingCart className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
-              )}
-            </div>
-            <span>Carrinho</span>
-          </button>
-
-          {/* Botão WhatsApp */}
+        {/* Ações */}
+        <div className="flex items-center gap-2 sm:gap-4">
+          
+          {/* WhatsApp - Minimalista no Desktop */}
           <a
             href={`https://wa.me/${whatsapp}`}
             target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 shadow"
+            className="hidden lg:flex items-center gap-2 bg-green-500 hover:bg-green-600 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-md shadow-green-900/20"
           >
-            <FaWhatsapp className="w-5 h-5" /> Contato
+            <FaWhatsapp size={18} />
+            Suporte
           </a>
-        </div>
 
-        {/* Menu Mobile */}
-        <div className="md:hidden flex items-center gap-3 relative">
-          {/* 🔴 Pontinho no topo (ao lado do menu mobile) */}
+          {/* User / Conta */}
           <button
-            onClick={onCartClick}
-            className="relative p-2 rounded-lg hover:bg-opacity-80"
-            style={{ backgroundColor: secondary, color: primary }}
+            onClick={() => setContaOpen(true)}
+            className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 transition-all border border-white/10"
           >
-            <ShoppingCart className="w-6 h-6" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
-            )}
+            <User size={20} />
           </button>
 
+          {/* Carrinho com Badge Animado */}
           <button
-            className="p-2 rounded-lg hover:bg-opacity-80"
+            onClick={onCartClick}
             style={{ backgroundColor: secondary, color: primary }}
+            className="relative flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all font-bold text-sm"
+          >
+            <ShoppingCart size={20} />
+            <span className="hidden sm:inline">Carrinho</span>
+            
+            <AnimatePresence>
+              {cartCount > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  key={cartCount}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-lg font-black"
+                >
+                  <motion.span
+                    animate={{ y: [0, -3, 0] }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {cartCount}
+                  </motion.span>
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            className="md:hidden p-2.5 rounded-2xl bg-white/10"
             onClick={() => setMenuOpen(!menuOpen)}
           >
-            {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
 
-      {/* Menu Mobile */}
-      {menuOpen && (
-        <div
-          className="md:hidden px-4 py-3 space-y-3"
-          style={{ backgroundColor: secondary }}
-        >
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Buscar produto..."
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl border text-black"
-            />
-          </div>
-
-          {/* Carrinho Mobile */}
-          <button
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl shadow hover:opacity-90 relative"
-            style={{ backgroundColor: primary, color: secondary }}
-            onClick={onCartClick}
+      {/* Mobile Menu Dropdown */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-white overflow-hidden shadow-2xl border-t border-gray-100"
           >
-            <div className="relative">
-              <ShoppingCart className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
-              )}
+            <div className="p-4 space-y-3">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar no cardápio..."
+                  onChange={(e) => onSearchChange?.(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-50 border-none text-black focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => setContaOpen(true)}
+                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-gray-100 text-gray-800 font-bold text-sm"
+                >
+                  <User size={18} /> Conta
+                </button>
+                <a
+                  href={`https://wa.me/${whatsapp}`}
+                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-green-50 text-green-600 font-bold text-sm"
+                >
+                  <FaWhatsapp size={18} /> WhatsApp
+                </a>
+              </div>
             </div>
-            <span>Carrinho ({cartCount})</span>
-          </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* WhatsApp Mobile */}
-          <a
-            href={`https://wa.me/${whatsapp}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700"
-          >
-            <FaWhatsapp className="w-5 h-5" /> Contato
-          </a>
-
-          {/* Cadastro/Login Mobile */}
-          <button
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl shadow"
-            style={{ backgroundColor: primary, color: secondary }}
-            onClick={() => setContaOpen(true)}
-          >
-            {user?.nome ? `Olá, ${user.nome}` : "Faça seu cadastro"}
-          </button>
-        </div>
-      )}
-
-      {/* Painel de cadastro */}
-      <ContaPanel
-        open={contaOpen}
-        onClose={() => setContaOpen(false)}
-        onLogin={setUser}
-      />
+      <ContaPanel open={contaOpen} onClose={() => setContaOpen(false)} onLogin={setUser} />
     </header>
   );
 }
