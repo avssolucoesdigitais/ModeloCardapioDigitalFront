@@ -6,7 +6,7 @@ import FormProduto from "../FormProduto";
 // Helper para preço
 function parsePreco(preco) {
   if (typeof preco === "number") return preco;
-  if (typeof preco === "string") return parseFloat(preco.replace(",", "."));
+  if (typeof preco === "string") return parseFloat(preco.replace(",", ".")) || 0;
   return 0;
 }
 
@@ -58,8 +58,7 @@ export default function PainelCalzone() {
   }
 
   return (
-    <div className="space-y-10">
-      {/* Formulário de cadastro/edição */}
+    <div className="max-w-5xl mx-auto p-4 space-y-12 font-sans pb-20">
       <FormProduto
         form={form}
         setForm={setForm}
@@ -70,207 +69,176 @@ export default function PainelCalzone() {
         saveDocData={saveDocData}
       />
 
-      {/* Lista de Calzones */}
-      <div className="bg-white rounded-xl shadow-md p-4 space-y-6">
-        <h3 className="text-lg font-bold"> Calzones Cadastrados</h3>
+      {/* Listagem de Calzones */}
+      <section className="bg-white rounded-3xl shadow-sm border border-orange-100 overflow-hidden">
+        <div className="bg-amber-600 px-6 py-5 flex justify-between items-center text-white">
+          <h3 className="text-xl font-black flex items-center gap-2 uppercase tracking-tighter">
+            🥟 Calzones no Cardápio
+          </h3>
+          <span className="bg-amber-900/20 px-3 py-1 rounded-full text-xs font-bold">
+            {docData.produtos?.length || 0} Itens
+          </span>
+        </div>
 
-        {docData.produtos?.length > 0 ? (
-          docData.produtos.map((p, idx) => (
-            <div
-              key={p.id || idx}
-              className="flex flex-col sm:flex-row gap-4 items-start border rounded-lg p-4 bg-white shadow-sm"
-            >
-              {/* Imagem */}
-              <img
-                src={p.image || "https://via.placeholder.com/100"}
-                alt={p.name}
-                className="w-24 h-24 rounded-md object-cover border"
-              />
-
-              {/* Infos */}
-              <div className="flex-1">
-                <h4 className="font-bold text-lg">{p.name}</h4>
-                <p className="text-sm text-gray-600">{p.description}</p>
-
-                {p.sizes?.length > 0 && (
-                  <p className="mt-1 text-sm font-medium text-gray-700">
-                    Tamanhos:{" "}
-                    {p.sizes
-                      .map(
-                        (s) =>
-                          `${s} (R$ ${
-                            p.prices[s]
-                              ? parsePreco(p.prices[s]).toFixed(2).replace(".", ",")
-                              : "0,00"
-                          })`
-                      )
-                      .join(", ")}
-                  </p>
-                )}
-
-                {p.adicionais?.length > 0 && (
-                  <p className="mt-1 text-sm font-medium text-gray-700">
-                    Adicionais:{" "}
-                    {p.adicionais
-                      .map(
-                        (a) =>
-                          `${a.nome} (+R$ ${a.preco ? parsePreco(a.preco).toFixed(2).replace(".", ",") : "0,00"})`
-                      )
-                      .join(", ")}
-                  </p>
-                )}
-              </div>
-
-              {/* Ações */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  onClick={() => {
-                    setForm({ ...p, categoria: "calzone" });
-                    setEditingIdx(idx);
-                  }}
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold transition"
-                >
-                  ✏️ Editar
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (confirm("Tem certeza que deseja excluir este item?")) {
-                      const next = {
-                        ...docData,
-                        produtos: docData.produtos.filter((_, i) => i !== idx),
-                      };
-                      saveDocData(next);
-                    }
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition"
-                >
-                  🗑️ Excluir
-                </button>
-
-                <button
-                  onClick={() => {
-                    const updated = { ...p, available: !p.available };
-                    const next = { ...docData };
-                    next.produtos[idx] = updated;
-                    saveDocData(next);
-                  }}
-                  className={`px-4 py-2 rounded-lg font-semibold transition ${
-                    p.available
-                      ? "bg-green-600 hover:bg-green-700 text-white"
-                      : "bg-gray-400 hover:bg-gray-500 text-white"
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-4">
+            {docData.produtos?.length > 0 ? (
+              docData.produtos.map((p, idx) => (
+                <div
+                  key={p.id || idx}
+                  className={`group flex flex-col md:flex-row gap-5 p-5 rounded-2xl border transition-all ${
+                    !p.available 
+                      ? "bg-stone-50 border-stone-100 opacity-60" 
+                      : "bg-white border-orange-50 hover:border-amber-200 hover:shadow-lg hover:shadow-amber-900/5"
                   }`}
                 >
-                  {p.available ? "✅ Disponível" : "❌ Indisponível"}
-                </button>
+                  <img
+                    src={p.image || "https://via.placeholder.com/150"}
+                    alt={p.name}
+                    className="w-full md:w-32 h-32 rounded-2xl object-cover border border-orange-50 group-hover:rotate-1 transition-transform"
+                  />
+
+                  <div className="flex-1">
+                    <h4 className="font-black text-stone-800 text-xl">{p.name}</h4>
+                    <p className="text-sm text-stone-500 mt-1">{p.description}</p>
+                    
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {p.sizes?.map((s) => (
+                        <span key={s} className="px-3 py-1 bg-amber-50 text-amber-700 rounded-lg text-[11px] font-black border border-amber-100">
+                          {s.toUpperCase()} • R$ {parsePreco(p.prices[s]).toFixed(2).replace(".", ",")}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex md:flex-col gap-2 pt-4 md:pt-0 border-t md:border-t-0 border-orange-50">
+                    <button
+                      onClick={() => { setForm({ ...p, categoria: "calzone" }); setEditingIdx(idx); window.scrollTo({top:0, behavior:'smooth'}); }}
+                      className="flex-1 md:w-11 md:h-11 flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => {
+                        const updated = { ...p, available: !p.available };
+                        const next = { ...docData };
+                        next.produtos[idx] = updated;
+                        saveDocData(next);
+                      }}
+                      className={`flex-1 md:w-11 md:h-11 flex items-center justify-center rounded-xl transition-all ${p.available ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' : 'bg-stone-200 text-stone-500'}`}
+                    >
+                      {p.available ? "ON" : "OFF"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Excluir ${p.name}?`)) {
+                          const next = { ...docData, produtos: docData.produtos.filter((_, i) => i !== idx) };
+                          saveDocData(next);
+                        }
+                      }}
+                      className="flex-1 md:w-11 md:h-11 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-10 text-stone-400 font-medium italic border-2 border-dashed border-stone-100 rounded-2xl">
+                Nenhum calzone encontrado.
               </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-sm text-gray-500">Nenhum calzone cadastrado.</p>
-        )}
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Configurações Extras (Bases, Bordas, Adicionais) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ExtraSection 
+          title="🍞 Bases" 
+          items={docData.bases} 
+          icon="amber"
+          onSave={(items) => saveDocData({ ...docData, bases: items })} 
+        />
+        <ExtraSection 
+          title="🥖 Bordas" 
+          items={docData.bordas} 
+          icon="orange"
+          onSave={(items) => saveDocData({ ...docData, bordas: items })} 
+        />
+        <ExtraSection 
+          title="🧀 Adicionais" 
+          items={docData.adicionais} 
+          icon="yellow"
+          onSave={(items) => saveDocData({ ...docData, adicionais: items })} 
+        />
       </div>
-
-      {/* Bases */}
-      <section>
-        <h2 className="text-lg font-bold mb-3">🍞 Bases</h2>
-        <ItemList
-          items={docData.bases}
-          onChange={(items) => {
-            const next = { ...docData, bases: items };
-            saveDocData(next);
-          }}
-        />
-      </section>
-
-      {/* Bordas */}
-      <section>
-        <h2 className="text-lg font-bold mb-3">🥖 Bordas</h2>
-        <ItemList
-          items={docData.bordas}
-          onChange={(items) => {
-            const next = { ...docData, bordas: items };
-            saveDocData(next);
-          }}
-        />
-      </section>
-
-      {/* Adicionais */}
-      <section>
-        <h2 className="text-lg font-bold mb-3">🧀 Adicionais</h2>
-        <ItemList
-          items={docData.adicionais}
-          onChange={(items) => {
-            const next = { ...docData, adicionais: items };
-            saveDocData(next);
-          }}
-        />
-      </section>
     </div>
   );
 }
 
-/* ======================================================
-   Componente genérico para Bases, Bordas e Adicionais
-   ====================================================== */
+function ExtraSection({ title, items = [], onSave, icon }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm border border-stone-100 overflow-hidden h-fit">
+      <div className={`px-5 py-4 bg-stone-50 border-b border-stone-100 flex items-center justify-between`}>
+        <h4 className="font-black text-stone-700 text-xs uppercase tracking-widest">{title}</h4>
+      </div>
+      <div className="p-5">
+        <ItemList items={items} onChange={onSave} />
+      </div>
+    </div>
+  );
+}
+
 function ItemList({ items = [], onChange }) {
   const [novo, setNovo] = useState({ nome: "", preco: "" });
 
   function addItem() {
-    if (!novo.nome) return;
-    const precoCorreto = parsePreco(novo.preco);
-    onChange([...items, { ...novo, preco: precoCorreto, id: Date.now() }]);
+    if (!novo.nome.trim()) return;
+    onChange([...items, { ...novo, preco: parsePreco(novo.preco), id: Date.now() }]);
     setNovo({ nome: "", preco: "" });
   }
 
-  function removeItem(id) {
-    onChange(items.filter((i) => i.id !== id));
-  }
-
   return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="flex items-center justify-between border p-2 rounded"
-        >
-          <span>
-            {item.nome}{" "}
-            {item.preco && (
-              <span className="text-green-600">
-                +R$ {Number(item.preco).toFixed(2)}
-              </span>
-            )}
-          </span>
-          <button
-            onClick={() => removeItem(item.id)}
-            className="text-red-600 hover:underline"
-          >
-            Remover
-          </button>
-        </div>
-      ))}
+    <div className="space-y-4">
+      <div className="space-y-2 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl group transition-colors hover:bg-amber-50">
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-stone-700">{item.nome}</span>
+              <span className="text-[10px] font-black text-amber-600">+ R$ {parsePreco(item.preco).toFixed(2).replace(".", ",")}</span>
+            </div>
+            <button 
+              onClick={() => onChange(items.filter((i) => i.id !== item.id))}
+              className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-rose-500 transition-all text-xs font-bold uppercase"
+            >
+              Remover
+            </button>
+          </div>
+        ))}
+      </div>
 
-      {/* Novo item */}
-      <div className="flex gap-2 mt-2">
+      <div className="flex flex-col gap-2 pt-2">
         <input
           placeholder="Nome"
           value={novo.nome}
           onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
-          className="border px-2 py-1 rounded flex-1"
+          className="w-full h-10 px-4 bg-stone-100 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-amber-200 outline-none transition-all"
         />
-        <input
-          placeholder="Preço"
-          value={novo.preco}
-          onChange={(e) => setNovo({ ...novo, preco: e.target.value })}
-          className="border px-2 py-1 rounded w-28"
-        />
-        <button
-          onClick={addItem}
-          className="bg-blue-600 text-white px-3 rounded"
-        >
-          +
-        </button>
+        <div className="flex gap-2">
+          <input
+            placeholder="R$ 0,00"
+            value={novo.preco}
+            onChange={(e) => setNovo({ ...novo, preco: e.target.value.replace(/[^\d.,]/g, "") })}
+            className="flex-1 h-10 px-4 bg-stone-100 rounded-xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+          />
+          <button
+            onClick={addItem}
+            className="px-4 bg-stone-800 text-white rounded-xl text-xs font-black hover:bg-amber-600 transition-all uppercase"
+          >
+            +
+          </button>
+        </div>
       </div>
     </div>
   );

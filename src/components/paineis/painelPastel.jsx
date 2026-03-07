@@ -3,25 +3,15 @@ import { db } from "../../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import FormProduto from "../FormProduto";
 
-// Helper para preço
+// Helper para preço robusto
 function parsePreco(preco) {
-  if (typeof preco === "number") {
-    return preco;
-  }
-
-  if (typeof preco === "string") {
-    return parseFloat(preco.replace(",", "."));
-  }
-
-  return 0; // Default value if not a number or string
+  if (typeof preco === "number") return preco;
+  if (typeof preco === "string") return parseFloat(preco.replace(",", ".")) || 0;
+  return 0;
 }
 
 export default function PainelPastel() {
-  const [docData, setDocData] = useState({
-    produtos: [],
-    adicionais: [], // Apenas adicionais para o pastel
-  });
-
+  const [docData, setDocData] = useState({ produtos: [], adicionais: [] });
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -29,10 +19,9 @@ export default function PainelPastel() {
     sizes: [],
     prices: {},
     available: true,
-    categoria: "tradicional", // Exemplo de categoria fixada
-    adicionais: [], // Para armazenar adicionais
+    categoria: "tradicional",
+    adicionais: [],
   });
-
   const [editingIdx, setEditingIdx] = useState(null);
 
   useEffect(() => {
@@ -57,13 +46,12 @@ export default function PainelPastel() {
       sizes: [],
       prices: {},
       available: true,
-      categoria: "tradicional", // Fixando categoria
+      categoria: "tradicional",
       adicionais: [],
     });
     setEditingIdx(null);
   }
 
-  // Categorias fixas (se necessário)
   const categorias = ["tradicional", "especial", "doce"];
   const pastelsPorCategoria = categorias.map((cat) => ({
     nome: cat,
@@ -71,8 +59,8 @@ export default function PainelPastel() {
   }));
 
   return (
-    <div className="space-y-10">
-      {/* Formulário de cadastro/edição */}
+    <div className="max-w-5xl mx-auto p-4 space-y-12 font-sans pb-20">
+      {/* Formulário Reutilizável */}
       <FormProduto
         form={form}
         setForm={setForm}
@@ -83,138 +71,111 @@ export default function PainelPastel() {
         saveDocData={saveDocData}
       />
 
-      {/* Lista agrupada */}
-      <div className="bg-white rounded-xl shadow-md p-4 space-y-6">
-        <h3 className="text-lg font-bold">🥟 Pastéis Cadastrados</h3>
+      {/* Listagem de Pastéis */}
+      <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+          <h3 className="text-xl font-black text-gray-800 flex items-center gap-2">
+            🥟 Cardápio de Pastéis
+          </h3>
+        </div>
 
-        {pastelsPorCategoria.map(({ nome, itens }) => (
-          <div key={nome} className="space-y-3">
-            <h4 className="font-semibold capitalize flex items-center gap-2">
-              {nome === "tradicional" && "🥟 Tradicionais"}
-              {nome === "especial" && "⭐ Especiais"}
-              {nome === "doce" && "🍫 Doces"}
-            </h4>
+        <div className="p-6 space-y-10">
+          {pastelsPorCategoria.map(({ nome, itens }) => (
+            <div key={nome} className="space-y-4">
+              <h4 className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-orange-500">
+                <span className="h-px flex-1 bg-orange-100"></span>
+                {nome === "tradicional" && "🥟 Pastéis Tradicionais"}
+                {nome === "especial" && "🌟 Pastéis Especiais"}
+                {nome === "doce" && "🍫 Pastéis Doces"}
+                <span className="h-px flex-1 bg-orange-100"></span>
+              </h4>
 
-            {itens.length > 0 ? (
-              itens.map((p) => {
-                const realIdx = docData.produtos.indexOf(p);
-                return (
-                  <div
-                    key={p.id || realIdx}
-                    className="flex flex-col sm:flex-row gap-4 items-start border rounded-lg p-4 bg-white shadow-sm"
-                  >
-                    {/* Imagem */}
-                    <img
-                      src={p.image || "https://via.placeholder.com/100"}
-                      alt={p.name}
-                      className="w-24 h-24 rounded-md object-cover border"
-                    />
-
-                    {/* Infos */}
-                    <div className="flex-1">
-                      <h4 className="font-bold text-lg">{p.name}</h4>
-                      <p className="text-sm text-gray-600">{p.description}</p>
-
-                      {/* Tamanhos */}
-                      {p.sizes?.length > 0 && (
-                        <p className="mt-1 text-sm font-medium text-gray-700">
-                          Tamanhos:{" "}
-                          {p.sizes
-                            .map(
-                              (s) =>
-                                `${s} (R$ ${
-                                  p.prices[s]
-                                    ? parsePreco(p.prices[s]).toFixed(2).replace(".", ",")
-                                    : "0,00"
-                                })`
-                            )
-                            .join(", ")}
-                        </p>
-                      )}
-
-                      {/* Adicionais */}
-                      {p.adicionais?.length > 0 && (
-                        <p className="mt-1 text-sm font-medium text-gray-700">
-                          Adicionais:{" "}
-                          {p.adicionais
-                            .map(
-                              (a) =>
-                                `${a.nome} (+R$ ${
-                                  a.preco
-                                    ? parsePreco(a.preco).toFixed(2).replace(".", ",")
-                                    : "0,00"
-                                })`
-                            )
-                            .join(", ")}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Ações */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button
-                        onClick={() => {
-                          setForm({ ...p, category: "Pastel" }); // Garantir categoria fixada
-                          setEditingIdx(realIdx);
-                        }}
-                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold transition"
-                      >
-                        ✏️ Editar
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          if (confirm("Tem certeza que deseja excluir este item?")) {
-                            const next = {
-                              ...docData,
-                              produtos: docData.produtos.filter((_, i) => i !== realIdx),
-                            };
-                            saveDocData(next);
-                            setDocData(next);
-                          }
-                        }}
-                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition"
-                      >
-                        🗑️ Excluir
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          const updated = { ...p, available: !p.available, category: "Pastel" };
-                          const next = { ...docData };
-                          next.produtos[realIdx] = updated;
-                          saveDocData(next);
-                          setDocData(next);
-                        }}
-                        className={`px-4 py-2 rounded-lg font-semibold transition ${
-                          p.available
-                            ? "bg-green-600 hover:bg-green-700 text-white"
-                            : "bg-gray-400 hover:bg-gray-500 text-white"
+              <div className="grid grid-cols-1 gap-4">
+                {itens.length > 0 ? (
+                  itens.map((p) => {
+                    const realIdx = docData.produtos.indexOf(p);
+                    return (
+                      <div
+                        key={p.id || realIdx}
+                        className={`group flex flex-col md:flex-row gap-5 p-4 rounded-2xl border transition-all ${
+                          !p.available 
+                            ? "bg-gray-50 border-gray-100 opacity-60" 
+                            : "bg-white border-gray-100 hover:border-orange-200 hover:shadow-md"
                         }`}
                       >
-                        {p.available ? "✅ Disponível" : "❌ Indisponível"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-gray-500">
-                Nenhum item nessa categoria.
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
+                        <div className="relative shrink-0">
+                          <img
+                            src={p.image || "https://via.placeholder.com/100"}
+                            alt={p.name}
+                            className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover shadow-sm border border-gray-100"
+                          />
+                          {!p.available && (
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl text-white font-black text-xs uppercase tracking-tighter">Indisponível</span>
+                          )}
+                        </div>
 
-      {/* Adicionais */}
-      <section>
-        <h2 className="text-lg font-bold mb-3">🧀 Adicionais</h2>
-        <ItemList
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-bold text-gray-900 text-lg leading-tight truncate">{p.name}</h5>
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{p.description}</p>
+                          
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {p.sizes?.map((s) => (
+                              <span key={s} className="px-2 py-1 bg-orange-50 text-orange-700 rounded-lg text-[11px] font-bold border border-orange-100">
+                                {s}: R$ {parsePreco(p.prices[s]).toFixed(2).replace(".", ",")}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex md:flex-col justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0">
+                          <button
+                            onClick={() => { setForm({ ...p, category: "Pastel" }); setEditingIdx(realIdx); window.scrollTo({top:0, behavior:'smooth'}); }}
+                            className="flex-1 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => {
+                              const updated = { ...p, available: !p.available };
+                              const next = { ...docData };
+                              next.produtos[realIdx] = updated;
+                              saveDocData(next);
+                            }}
+                            className={`flex-1 md:w-10 md:h-10 flex items-center justify-center rounded-xl transition-colors ${p.available ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}
+                          >
+                            {p.available ? "✔" : "✖"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm("Excluir pastel permanentemente?")) {
+                                const next = { ...docData, produtos: docData.produtos.filter((_, i) => i !== realIdx) };
+                                saveDocData(next);
+                              }
+                            }}
+                            className="flex-1 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-8 border-2 border-dashed border-gray-100 rounded-2xl text-center text-gray-400 text-sm italic">Nenhum pastel cadastrado nesta categoria.</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Seção de Adicionais Minimalista */}
+      <section className="max-w-2xl mx-auto">
+        <SimpleItemSection
+          title="🧀 Adicionais para Pastel"
           items={docData.adicionais}
           onChange={(items) => {
             const next = { ...docData, adicionais: items };
-            setDocData(next);
             saveDocData(next);
           }}
         />
@@ -223,68 +184,66 @@ export default function PainelPastel() {
   );
 }
 
-// Componente para Adicionais
-function ItemList({ items = [], onChange }) {
+function SimpleItemSection({ title, items = [], onChange }) {
   const [novo, setNovo] = useState({ nome: "", preco: "" });
 
   function addItem() {
-    if (!novo.nome || !novo.preco) return;
-
-    // Aqui a correção para garantir que o preço será tratado corretamente com vírgula.
-    const precoCorreto = parsePreco(novo.preco);
-
-    onChange([...items, { ...novo, preco: precoCorreto, id: Date.now() }]);
+    if (!novo.nome.trim() || !novo.preco) return;
+    const precoNormalizado = parsePreco(novo.preco);
+    onChange([...items, { ...novo, preco: precoNormalizado, id: Date.now() }]);
     setNovo({ nome: "", preco: "" });
   }
 
-  function removeItem(id) {
-    onChange(items.filter((i) => i.id !== id));
-  }
-
   return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="flex items-center justify-between border p-2 rounded"
-        >
-          <span>
-            {item.nome}{" "}
-            {item.preco && (
-              <span className="text-green-600">
-                +R$ {Number(item.preco).toFixed(2)}
-              </span>
-            )}
-          </span>
+    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <h2 className="font-black text-gray-800 tracking-tight">{title}</h2>
+        <span className="text-[10px] font-black bg-white px-2 py-1 rounded-full border border-gray-200 text-gray-400">{items.length} OPÇÕES</span>
+      </div>
+      
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-2 scrollbar-thin">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-transparent hover:border-orange-100 hover:bg-white transition-all group">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-700">{item.nome}</span>
+                <span className="text-xs font-black text-orange-600">+ R$ {Number(item.preco).toFixed(2).replace(".", ",")}</span>
+              </div>
+              <button
+                onClick={() => onChange(items.filter((i) => i.id !== item.id))}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input
+              placeholder="Ex: Queijo Extra"
+              value={novo.nome}
+              onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
+              className="h-11 border-2 border-gray-50 rounded-xl px-4 bg-gray-50 focus:bg-white focus:border-orange-300 outline-none transition-all text-sm"
+            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+              <input
+                placeholder="0,00"
+                value={novo.preco}
+                onChange={(e) => setNovo({ ...novo, preco: e.target.value.replace(/[^\d.,]/g, "") })}
+                className="w-full h-11 border-2 border-gray-50 rounded-xl pl-8 pr-4 bg-gray-50 focus:bg-white focus:border-orange-300 outline-none transition-all text-sm font-bold"
+              />
+            </div>
+          </div>
           <button
-            onClick={() => removeItem(item.id)}
-            className="text-red-600 hover:underline"
+            onClick={addItem}
+            className="w-full h-11 bg-orange-600 text-white rounded-xl font-black text-sm hover:bg-orange-700 shadow-lg shadow-orange-100 active:scale-[0.98] transition-all"
           >
-            Remover
+            ADICIONAR COMPLEMENTO
           </button>
         </div>
-      ))}
-
-      {/* Novo item */}
-      <div className="flex gap-2">
-        <input
-          placeholder="Nome"
-          value={novo.nome}
-          onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
-          className="border px-2 py-1 rounded flex-1"
-        />
-        <input
-          placeholder="Preço"
-          value={novo.preco}
-          onChange={(e) => setNovo({ ...novo, preco: e.target.value })}
-          className="border px-2 py-1 rounded w-28"
-        />
-        <button
-          onClick={addItem}
-          className="bg-blue-600 text-white px-3 rounded"
-        >
-          +
-        </button>
       </div>
     </div>
   );
