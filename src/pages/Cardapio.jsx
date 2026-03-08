@@ -272,7 +272,12 @@ const makeOnAdd = useCallback(
       setHorarioModalOpen(true);
       return;
     }
-    setCheckoutOpen(true);
+
+    setOpen(false);
+
+    setTimeout(() => {
+      setCheckoutOpen(true);
+    }, 300); 
   }, [lojaAberta]);
 
   const cartCount = useMemo(

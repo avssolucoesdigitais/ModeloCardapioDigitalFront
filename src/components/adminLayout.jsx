@@ -2,9 +2,9 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut, FiHelpCircle } from "react-icons/fi";
+import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut } from "react-icons/fi";
 import { FaPizzaSlice, FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
-import logo from "../assets/logo.icon.png"
+import logo from "../assets/logo.icon.png";
 
 export default function AdminLayout() {
   const location = useLocation();
@@ -19,7 +19,7 @@ export default function AdminLayout() {
   ];
 
   const handleLogout = async () => {
-    if(window.confirm("Deseja realmente sair?")) {
+    if (window.confirm("Deseja realmente sair?")) {
       try {
         await signOut(auth);
         window.location.href = "/login";
@@ -29,7 +29,6 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen flex bg-[#F8FAFC]">
-      {/* Overlay Mobile */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div 
@@ -40,7 +39,6 @@ export default function AdminLayout() {
         )}
       </AnimatePresence>
 
-      {/* Botão Flutuante Mobile */}
       <button
         className="md:hidden fixed bottom-6 right-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-2xl active:scale-90 transition-transform"
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -48,18 +46,15 @@ export default function AdminLayout() {
         {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
       </button>
 
-      {/* Sidebar */}
       <aside
         className={`fixed md:static inset-y-0 left-0 w-72 bg-[#0F172A] text-slate-300 flex flex-col transition-all duration-300 z-50
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
-        {/* Header da Sidebar */}
         <div className="p-8 flex flex-col items-center border-b border-slate-800">
           <img src={logo} alt="logo" className="h-16 w-16 brightness-0 invert opacity-90 mb-3" />
           <h2 className="text-white font-black tracking-tighter text-xl">LA-CARTA</h2>
         </div>
 
-        {/* Links de Navegação */}
         <nav className="flex-1 px-4 py-8 space-y-1">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -86,28 +81,44 @@ export default function AdminLayout() {
           })}
         </nav>
 
-        {/* Card de Suporte / Footer da Sidebar */}
-        <div className="p-4 mx-4 mb-4 bg-slate-800/40 rounded-2xl border border-slate-700/50">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Suporte Dev</p>
-          <div className="flex justify-around mb-4">
-            <a href="https://wa.me/5588981356668" target="_blank" className="p-2 bg-slate-700 rounded-lg hover:text-green-400 transition-colors"><FaWhatsapp size={18}/></a>
-            <a href="#" className="p-2 bg-slate-700 rounded-lg hover:text-pink-400 transition-colors"><FaInstagram size={18}/></a>
-            <a href="#" className="p-2 bg-slate-700 rounded-lg hover:text-blue-400 transition-colors"><FaLinkedin size={18}/></a>
+        {/* Card de Suporte - AVANTE SOFTWARE */}
+        <div className="p-4 mx-4 mb-4 bg-slate-900/60 rounded-2xl border border-slate-800">
+          <div className="flex flex-col items-center mb-4">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Desenvolvido por
+            </span>
+            <span className="text-xs font-bold text-slate-200">
+              Avante Software
+            </span>
+            <div className="h-0.5 w-8 bg-blue-600 rounded-full mt-1"></div>
           </div>
+          
+          <div className="flex justify-around mb-4">
+            <a href="https://wa.me/5588981356668" target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg hover:text-green-400 transition-colors">
+              <FaWhatsapp size={16}/>
+            </a>
+            <a href="#" className="p-2 bg-slate-800 rounded-lg hover:text-pink-400 transition-colors">
+              <FaInstagram size={16}/>
+            </a>
+            <a href="#" className="p-2 bg-slate-800 rounded-lg hover:text-blue-400 transition-colors">
+              <FaLinkedin size={16}/>
+            </a>
+          </div>
+
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-700 hover:bg-red-500/20 hover:text-red-400 text-slate-300 font-bold text-xs transition-all uppercase tracking-wider"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 hover:bg-red-500/10 hover:text-red-400 text-slate-400 font-bold text-[10px] transition-all uppercase tracking-wider border border-slate-700/50"
           >
-            <FiLogOut size={14} /> Sair do Sistema
+            <FiLogOut size={12} /> Sair do Sistema
           </button>
         </div>
       </aside>
 
-      {/* Área de Conteúdo */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Topbar opcional para título da página atual */}
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between hidden md:flex">
-          <span className="text-slate-400 font-medium">Painel Administrativo &gt; <span className="text-slate-900 font-bold capitalize">{location.pathname.split('/').pop()}</span></span>
+        <header className="h-16 bg-white border-b border-slate-200 px-8 items-center justify-between hidden md:flex">
+          <span className="text-slate-400 font-medium">
+            Painel Administrativo &gt; <span className="text-slate-900 font-bold capitalize">{location.pathname.split('/').pop()}</span>
+          </span>
           <div className="flex items-center gap-2">
              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
              <span className="text-xs font-bold text-slate-600">Sistema Online</span>

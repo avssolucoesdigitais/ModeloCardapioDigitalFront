@@ -272,6 +272,19 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
       const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(msg)}`;
       window.open(url, "_blank");
+
+      if (cart.clear) {
+        cart.clear();
+      } else if (cart.setItems) {
+        cart.setItems([]);
+      }
+
+      // 2. Fechar o modal
+      onClose();
+
+      // 3. Feedback opcional para o usuário
+      alert("Pedido enviado com sucesso!");
+
     } catch (e) {
       console.error(e);
       alert("Erro ao processar o pedido.");
