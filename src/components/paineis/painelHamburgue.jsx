@@ -1,381 +1,248 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import uploadToCloudinary from "../../utils/uploadToCloudinary";
-import { PlusCircle, Trash2, Upload, Loader2 } from "lucide-react";
+import FormProduto from "../FormProduto";
+
+// Helper para preço robusto (Padronizado)
+function parsePreco(preco) {
+  if (typeof preco === "number") return preco;
+  if (typeof preco === "string") return parseFloat(preco.replace(",", ".")) || 0;
+  return 0;
+}
 
 export default function PainelHamburguer() {
-  const estruturaPadrao = {
-    produtos: [],
-    artesanais: [],
-    paes: [],
-    carnes: [],
-    queijos: [],
-    molhos: [],
-    complementos: [],
-    acompanhamentos: [],
-    bebidas: [],
-    sobremesas: [],
-  };
-
-  const [docData, setDocData] = useState(estruturaPadrao);
+  const [docData, setDocData] = useState({ produtos: [], adicionais: [] });
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    image: "",
+    sizes: [],
+    prices: {},
+    available: true,
+    categoria: "tradicional",
+    adicionais: [],
+  });
+  const [editingIdx, setEditingIdx] = useState(null);
 
   useEffect(() => {
     (async () => {
       const ref = doc(db, "opcoes", "Hamburguer");
       const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setDocData({ ...estruturaPadrao, ...snap.data() });
-      } else {
-        await setDoc(ref, estruturaPadrao);
-        setDocData(estruturaPadrao);
-      }
+      if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Hamburguer");
+    const ref = doc(db, "opcoes", "Hamburguer"); // Corrigido para Capitalizado se for o padrão
     await setDoc(ref, next, { merge: true });
     setDocData(next);
   }
 
-  function updateSection(section, value) {
-    setDocData((prev) => {
-      const updated = { ...prev, [section]: value };
-      saveDocData(updated);
-      return updated;
+  function resetForm() {
+    setForm({
+      name: "",
+      description: "",
+      image: "",
+      sizes: [],
+      prices: {},
+      available: true,
+      categoria: "tradicional",
+      adicionais: [],
     });
+    setEditingIdx(null);
   }
 
+  const categorias = ["tradicional", "especial", "combo"];
+  const hamburgueresPorCategoria = categorias.map((cat) => ({
+    nome: cat,
+    itens: docData.produtos?.filter((p) => p.categoria === cat) || [],
+  }));
+
   return (
-    <div className="space-y-10 max-w-6xl mx-auto p-4 sm:p-6">
-      {/* Hambúrgueres Prontos */}
-      <Section title="🍔 Hambúrgueres Prontos">
-        <ItemList
-          items={docData.produtos || []}
-          onChange={(items) => updateSection("produtos", items)}
-        />
-      </Section>
+    <div className="max-w-5xl mx-auto p-4 space-y-12 font-sans pb-20">
+      <FormProduto
+        form={form}
+        setForm={setForm}
+        resetForm={resetForm}
+        editingIdx={editingIdx}
+        docData={docData}
+        setDocData={setDocData}
+        saveDocData={saveDocData}
+      />
 
-      {/* Hambúrgueres Artesanais */}
-      <Section title="🥩 Hambúrgueres Artesanais">
-        <ItemList
-          items={docData.artesanais || []}
-          onChange={(items) => updateSection("artesanais", items)}
-        />
-      </Section>
-
-      {/* Monte o seu Burger */}
-      <Section title="🍳 Monte o Seu Burger">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <OptionList
-            title="Pães"
-            items={docData.paes || []}
-            onChange={(items) => updateSection("paes", items)}
-          />
-          <OptionList
-            title="Carnes"
-            items={docData.carnes || []}
-            onChange={(items) => updateSection("carnes", items)}
-          />
-          <OptionList
-            title="Queijos"
-            items={docData.queijos || []}
-            onChange={(items) => updateSection("queijos", items)}
-          />
-          <OptionList
-            title="Molhos"
-            items={docData.molhos || []}
-            onChange={(items) => updateSection("molhos", items)}
-          />
-          <OptionList
-            title="Complementos"
-            items={docData.complementos || []}
-            onChange={(items) => updateSection("complementos", items)}
-          />
+      {/* Listagem Estilizada */}
+      <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-slate-900 px-6 py-5 flex justify-between items-center">
+          <h3 className="text-xl font-black text-white flex items-center gap-2">
+            🍔 Burger Menu Admin
+          </h3>
+          <span className="text-xs font-bold bg-rose-500 text-white px-3 py-1 rounded-full uppercase">
+            {docData.produtos?.length || 0} Itens
+          </span>
         </div>
-      </Section>
-    </div>
-  );
-}
 
-/* ======================================================
-   Helpers
-   ====================================================== */
-function parsePreco(preco) {
-  if (!preco) return 0;
-  const num = parseFloat(String(preco).replace(",", ".").replace(/[^\d.]/g, ""));
-  return isNaN(num) ? 0 : num;
-}
+        <div className="p-6 space-y-10">
+          {hamburgueresPorCategoria.map(({ nome, itens }) => (
+            <div key={nome} className="space-y-4">
+              <h4 className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.2em] text-rose-600">
+                {nome === "tradicional" && "🍔 Tradicionais"}
+                {nome === "especial" && "✨ Especiais da Casa"}
+                {nome === "combo" && "🥤 Combos Completos"}
+                <span className="h-px flex-1 bg-rose-100"></span>
+              </h4>
 
-function Section({ title, children }) {
-  return (
-    <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">{title}</h2>
-      {children}
-    </section>
-  );
-}
+              <div className="grid grid-cols-1 gap-4">
+                {itens.length > 0 ? (
+                  itens.map((p) => {
+                    const realIdx = docData.produtos.indexOf(p);
+                    return (
+                      <div
+                        key={p.id || realIdx}
+                        className={`group flex flex-col md:flex-row gap-5 p-5 rounded-2xl border transition-all ${
+                          !p.available 
+                            ? "bg-gray-50 border-gray-100 opacity-60" 
+                            : "bg-white border-gray-100 hover:border-rose-200 hover:shadow-lg hover:shadow-rose-500/5"
+                        }`}
+                      >
+                        <div className="relative shrink-0 mx-auto md:mx-0">
+                          <img
+                            src={p.image || "https://via.placeholder.com/150"}
+                            alt={p.name}
+                            className="w-28 h-28 md:w-32 md:h-32 rounded-2xl object-cover shadow-sm border border-gray-100 group-hover:scale-105 transition-transform"
+                          />
+                        </div>
 
-/* ======================================================
-   ItemList (hambúrguer pronto/artesanal)
-   ====================================================== */
-function ItemList({ items = [], onChange }) {
-  const [novo, setNovo] = useState({
-    name: "",
-    description: "",
-    preco: "",
-    image: "",
-    montar: false,
-  });
-  const [loading, setLoading] = useState(false);
+                        <div className="flex-1 min-w-0 text-center md:text-left">
+                          <h5 className="font-black text-slate-800 text-xl leading-tight">{p.name}</h5>
+                          <p className="text-sm text-slate-500 mt-2 line-clamp-2 italic">{p.description}</p>
+                          
+                          <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
+                            {p.sizes?.map((s) => (
+                              <div key={s} className="px-3 py-1 bg-slate-50 text-slate-700 rounded-full text-[11px] font-black border border-slate-200">
+                                {s.toUpperCase()} <span className="mx-1 text-rose-500">•</span> R$ {parsePreco(p.prices[s]).toFixed(2).replace(".", ",")}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
 
-  async function handleUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    setLoading(true);
-    try {
-      const url = await uploadToCloudinary(file);
-      setNovo((prev) => ({ ...prev, image: url }));
-    } catch (err) {
-      alert("Erro no upload: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function addItem() {
-    if (!novo.name) return alert("Digite um nome!");
-    if (!novo.montar && !novo.preco)
-      return alert("Informe um preço para hambúrguer pronto!");
-
-    const precoNormalizado = novo.montar
-      ? ""
-      : parseFloat(String(novo.preco).replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-
-    onChange([...items, { ...novo, preco: precoNormalizado, id: Date.now() }]);
-    setNovo({ name: "", description: "", preco: "", image: "", montar: false });
-  }
-
-  function removeItem(id) {
-    onChange(items.filter((i) => i.id !== id));
-  }
-
-  return (
-    <div className="space-y-5">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 p-4 bg-gray-50 border rounded-xl hover:shadow-md transition"
-        >
-          <div className="flex items-center gap-4 w-full sm:w-auto">
-            {item.image ? (
-              <img
-                src={item.image}
-                alt={item.name}
-                className="w-20 h-20 object-cover rounded-lg border"
-              />
-            ) : (
-              <div className="w-20 h-20 flex items-center justify-center rounded-lg border bg-gray-100 text-gray-400 text-xs">
-                sem imagem
+                        <div className="flex md:flex-col justify-center gap-2 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100">
+                          <button
+                            onClick={() => { setForm({ ...p, category: "Hamburguer" }); setEditingIdx(realIdx); window.scrollTo({top:0, behavior:'smooth'}); }}
+                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                            title="Editar"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => {
+                              const updated = { ...p, available: !p.available };
+                              const next = { ...docData };
+                              next.produtos[realIdx] = updated;
+                              saveDocData(next);
+                            }}
+                            className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${p.available ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-200 text-gray-500'}`}
+                            title="Disponibilidade"
+                          >
+                            {p.available ? "ON" : "OFF"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Excluir o burger ${p.name}?`)) {
+                                const next = { ...docData, produtos: docData.produtos.filter((_, i) => i !== realIdx) };
+                                saveDocData(next);
+                              }
+                            }}
+                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-6 text-center text-slate-400 text-xs font-medium border-2 border-dashed border-slate-50 rounded-2xl">
+                    Sem itens nesta categoria.
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex-1">
-              <p className="font-semibold text-gray-900">{item.name}</p>
-              {item.description && (
-                <p className="text-sm text-gray-600">{item.description}</p>
-              )}
-              {item.preco && (
-                <p className="text-blue-600 font-bold">
-                  R$ {parsePreco(item.preco).toFixed(2).replace(".", ",")}
-                </p>
-              )}
-              {item.montar && (
-                <p className="text-xs text-blue-600 font-semibold mt-1">
-                  🔧 Cliente pode montar
-                </p>
-              )}
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Adicionais Estilizados */}
+      <section className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 bg-slate-50 border-b border-gray-100 flex justify-between items-center">
+            <h2 className="font-black text-slate-800 uppercase tracking-tighter">🥓 Extras & Toppings</h2>
+            <span className="text-xs font-bold text-rose-500">Hamburgueria</span>
           </div>
-          <button
-            onClick={() => removeItem(item.id)}
-            aria-label={`Remover ${item.name}`}
-            className="text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
-          >
-            <Trash2 size={16} /> Remover
-          </button>
-        </div>
-      ))}
-
-      {/* Novo item */}
-      <div className="border rounded-xl p-5 bg-white shadow-sm">
-        <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <PlusCircle className="w-5 h-5 text-blue-600" /> Novo Hambúrguer
-        </h4>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <input
-            placeholder="Nome"
-            value={novo.name}
-            onChange={(e) => setNovo({ ...novo, name: e.target.value })}
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-            aria-label="Nome do hambúrguer"
-          />
-          <input
-            placeholder="Preço base"
-            disabled={novo.montar}
-            value={novo.preco}
-            onChange={(e) => {
-              const val = e.target.value.replace(/[^\d.,]/g, "");
-              setNovo({ ...novo, preco: val });
-            }}
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-            aria-label="Preço do hambúrguer"
-          />
-        </div>
-
-        <textarea
-          placeholder="Descrição (opcional)"
-          value={novo.description}
-          onChange={(e) => setNovo({ ...novo, description: e.target.value })}
-          className="border rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 outline-none mb-3"
-          rows={2}
-        />
-
-        <label className="flex items-center gap-2 text-sm text-gray-700 mb-3">
-          <input
-            type="checkbox"
-            checked={novo.montar}
-            onChange={(e) => setNovo({ ...novo, montar: e.target.checked })}
-          />
-          Permitir cliente montar hambúrguer
-        </label>
-
-        <div className="flex flex-col sm:flex-row gap-3 items-center">
-          <label className="flex items-center gap-2 text-sm cursor-pointer text-blue-600 font-medium">
-            <Upload className="w-4 h-4" /> Enviar imagem
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleUpload}
-              className="hidden"
+          <div className="p-6">
+            <AdicionaisList
+              items={docData.adicionais}
+              onChange={(items) => {
+                const next = { ...docData, adicionais: items };
+                saveDocData(next);
+              }}
             />
-          </label>
-
-          {loading && (
-            <div className="flex items-center gap-1 text-gray-500 text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" /> Enviando...
-            </div>
-          )}
+          </div>
         </div>
-
-        {novo.image && (
-          <img
-            src={novo.image}
-            alt="preview"
-            className="w-24 h-24 object-cover rounded-lg border mt-3"
-          />
-        )}
-
-        <button
-          onClick={addItem}
-          className="mt-4 bg-blue-600 text-white w-full sm:w-auto px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition active:scale-[0.98]"
-        >
-          Adicionar
-        </button>
-      </div>
+      </section>
     </div>
   );
 }
 
-/* ======================================================
-   OptionList (novo modelo tipo lista moderna)
-   ====================================================== */
-function OptionList({ title, items = [], onChange }) {
+function AdicionaisList({ items = [], onChange }) {
   const [novo, setNovo] = useState({ nome: "", preco: "" });
 
-  function addOption() {
-    if (!novo.nome.trim()) return;
-    const precoNormalizado =
-      parseFloat(String(novo.preco).replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-
-    onChange([...items, { ...novo, preco: precoNormalizado, id: Date.now() }]);
+  function addItem() {
+    if (!novo.nome || !novo.preco) return;
+    const precoCorreto = parsePreco(novo.preco);
+    onChange([...items, { ...novo, preco: precoCorreto, id: Date.now() }]);
     setNovo({ nome: "", preco: "" });
   }
 
-  function removeOption(id) {
-    onChange(items.filter((i) => i.id !== id));
-  }
-
   return (
-    <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
-      {/* Cabeçalho */}
-      <div className="bg-gray-100 px-4 py-3 border-b flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">{title}</h3>
-        <span className="text-sm text-gray-500">
-          {items.length} {items.length === 1 ? "item" : "itens"}
-        </span>
-      </div>
-
-      {/* Lista */}
-      <div className="divide-y divide-gray-200">
-        {items.length > 0 ? (
-          items.map((op) => (
-            <div
-              key={op.id}
-              className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                <span className="font-medium text-gray-800">{op.nome}</span>
-                {op.preco ? (
-                  <span className="text-blue-600 font-semibold text-sm">
-                    +R$ {parsePreco(op.preco).toFixed(2).replace(".", ",")}
-                  </span>
-                ) : (
-                  <span className="text-gray-400 text-sm">Grátis</span>
-                )}
-              </div>
-
-              <button
-                onClick={() => removeOption(op.id)}
-                className="text-red-500 hover:text-red-700 transition flex items-center gap-1"
-                aria-label={`Remover ${op.nome}`}
-              >
-                <Trash2 size={16} />
-                <span className="text-sm">Remover</span>
-              </button>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 group">
+            <div className="flex flex-col">
+              <span className="text-sm font-black text-slate-700">{item.nome}</span>
+              <span className="text-xs font-bold text-rose-500">+ R$ {parsePreco(item.preco).toFixed(2).replace(".", ",")}</span>
             </div>
-          ))
-        ) : (
-          <p className="px-4 py-3 text-sm text-gray-500 italic">
-            Nenhum item adicionado ainda.
-          </p>
-        )}
+            <button
+              onClick={() => onChange(items.filter((i) => i.id !== item.id))}
+              className="text-slate-300 hover:text-rose-500 transition-colors p-1"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
       </div>
 
-      {/* Formulário */}
-      <div className="bg-gray-50 border-t p-4 flex flex-col sm:flex-row items-center gap-2">
+      <div className="flex flex-col gap-2 pt-4 border-t border-slate-100">
         <input
-          placeholder="Nome"
+          placeholder="Nome (ex: Bacon Extra)"
           value={novo.nome}
           onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
-          className="border rounded-lg px-3 py-2 flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
+          className="h-11 border-2 border-slate-50 rounded-xl px-4 bg-slate-50 focus:bg-white focus:border-rose-200 outline-none transition-all text-sm font-medium"
         />
-        <input
-          placeholder="Preço extra"
-          value={novo.preco}
-          onChange={(e) => {
-            const val = e.target.value.replace(/[^\d.,]/g, "");
-            setNovo({ ...novo, preco: val });
-          }}
-          className="border rounded-lg px-3 py-2 w-full sm:w-32 focus:ring-2 focus:ring-blue-500 outline-none text-center"
-        />
-        <button
-          onClick={addOption}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 active:scale-95 transition w-full sm:w-auto"
-        >
-          +
-        </button>
+        <div className="flex gap-2">
+          <input
+            placeholder="R$ 0,00"
+            value={novo.preco}
+            onChange={(e) => setNovo({ ...novo, preco: e.target.value.replace(/[^\d.,]/g, "") })}
+            className="flex-1 h-11 border-2 border-slate-50 rounded-xl px-4 bg-slate-50 focus:bg-white focus:border-rose-200 outline-none transition-all text-sm font-black"
+          />
+          <button
+            onClick={addItem}
+            className="px-6 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-rose-600 transition-all uppercase tracking-widest"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   );

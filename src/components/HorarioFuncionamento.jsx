@@ -169,18 +169,18 @@ export default function HorarioFuncionamento({ lojaId = "daypizza" }) {
       <div className="flex items-center gap-3">
         <span
           className={`w-3 h-3 rounded-full ${
-            aberto ? "bg-green-500" : "bg-red-500"
+            aberto ? "bg-blue-500" : "bg-red-500"
           } animate-pulse`}
           aria-hidden="true"
         />
         <h3
           className={`text-lg font-bold flex items-center gap-2 ${
-            aberto ? "text-green-700" : "text-red-700"
+            aberto ? "text-blue-700" : "text-red-700"
           }`}
         >
           {aberto ? (
             <>
-              <FiCheckCircle className="text-green-600" /> Aberto agora
+              <FiCheckCircle className="text-blue-600" /> Aberto agora
             </>
           ) : (
             <>
