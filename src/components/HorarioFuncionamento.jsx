@@ -160,56 +160,52 @@ export default function HorarioFuncionamento({ lojaId = "daypizza" }) {
   }
 
   return (
-    <div
-      className={`rounded-2xl p-5 sm:p-6 flex flex-col gap-3 shadow-md border transition-all ${
-        aberto ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
-      }`}
-      aria-live="polite"
-    >
-      <div className="flex items-center gap-3">
+    <div className="w-full flex items-center justify-center my-6">
+      <div
+        className={`max-w-md w-full rounded-2xl p-5 sm:p-6 flex flex-col gap-3 shadow-lg border transition-all ${
+          aberto ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+        }`}
+        aria-live="polite"
+      >
+      <div className="flex items-center gap-4">
         <span
-          className={`w-3 h-3 rounded-full ${
-            aberto ? "bg-blue-500" : "bg-red-500"
-          } animate-pulse`}
+          className={`w-4 h-4 rounded-full ${aberto ? "bg-blue-500" : "bg-red-500"} animate-pulse`}
           aria-hidden="true"
         />
-        <h3
-          className={`text-lg font-bold flex items-center gap-2 ${
-            aberto ? "text-blue-700" : "text-red-700"
-          }`}
-        >
+        <h3 className={`text-xl sm:text-2xl font-extrabold flex items-center gap-2 ${aberto ? "text-blue-800" : "text-red-800"}`}>
           {aberto ? (
             <>
-              <FiCheckCircle className="text-blue-600" /> Aberto agora
+              <FiCheckCircle className="text-2xl text-blue-600" /> Aberto agora
             </>
           ) : (
             <>
-              <FiXCircle className="text-red-600" /> Fechado agora
+              <FiXCircle className="text-2xl text-red-600" /> Fechado agora
             </>
           )}
         </h3>
       </div>
 
       <div className="text-gray-800">
-        <p className="text-sm sm:text-base flex items-center gap-1">
+        <p className="text-sm sm:text-base flex items-center gap-2">
           <FiClock className="text-gray-500" aria-hidden="true" />
-          <strong>Hoje ({status.labelHoje}):</strong>{" "}
-          <span className="ml-1">{hojeTexto}</span>
+          <strong className="text-gray-900">Hoje ({status.labelHoje}):</strong>
+          <span className="ml-1 text-lg font-semibold text-gray-800">{hojeTexto}</span>
         </p>
         {msgExtra && (
           <p
-            className={`mt-2 text-sm ${
+            className={`mt-3 text-sm ${
               msgExtra.includes("⚠️") || msgExtra.includes("⏳")
-                ? "text-amber-600 flex items-center gap-1"
+                ? "text-amber-700 bg-amber-50 px-3 py-2 rounded-md flex items-center gap-2"
                 : "text-gray-700"
             }`}
           >
             {(msgExtra.includes("⚠️") || msgExtra.includes("⏳")) && (
-              <FiAlertTriangle className="inline" aria-hidden="true" />
+              <FiAlertTriangle className="inline text-amber-600" aria-hidden="true" />
             )}
             {msgExtra.replace(/[⏳]/g, "")}
           </p>
         )}
+      </div>
       </div>
     </div>
   );
