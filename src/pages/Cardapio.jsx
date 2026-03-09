@@ -12,6 +12,7 @@ import useLojaConfig from "../hooks/useLojaConfig";
 import { GiFullPizza } from "react-icons/gi";
 import { MdLocalOffer } from "react-icons/md";
 import { FaInstagram } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 // Modais
 import PizzaBuilderModal from "../components/BuiderModal/PizzaBuilderModal";
@@ -21,15 +22,15 @@ import PastelBuilderModal from "../components/BuiderModal/PastelBuilderModal.jsx
 const DIA_KEYS = [
   "domingo",
   "segunda",
-  "terca",
+  "terça",
   "quarta",
   "quinta",
   "sexta",
-  "sabado",
+  "sábado",
 ];
 
 const ALL_CATEGORIES = [
-  { name: "Promocao", icon: <MdLocalOffer /> },
+  { name: "Promoção", icon: <MdLocalOffer /> },
   { name: "Pizza", icon: "🍕" },
   { name: "Hamburguer", icon: "🍔" },
   { name: "Pastel", icon: "🥟" },
@@ -184,8 +185,7 @@ export default function Cardapio() {
           (p.name || "").toLowerCase().includes(search.toLowerCase())
       )
       .reduce((acc, p) => {
-        const group =
-          activeCategory === "Todas" ? p.category || "Outros" : p.subCategory || "Outros";
+        const group =  p.category || "Outros";
         if (!acc[group]) acc[group] = [];
         acc[group].push(p);
         return acc;
@@ -194,8 +194,8 @@ export default function Cardapio() {
 
   const orderedGroups = useMemo(() => {
     return Object.entries(groupedProducts).sort(([a], [b]) => {
-      if (a.toLowerCase() === "promocao") return -1;
-      if (b.toLowerCase() === "promocao") return 1;
+      if (a.toLowerCase() === "promoção") return -1;
+      if (b.toLowerCase() === "promoção") return 1;
       return 0;
     });
   }, [groupedProducts]);
@@ -272,7 +272,12 @@ const makeOnAdd = useCallback(
       setHorarioModalOpen(true);
       return;
     }
-    setCheckoutOpen(true);
+
+    setOpen(false);
+
+    setTimeout(() => {
+      setCheckoutOpen(true);
+    }, 300); 
   }, [lojaAberta]);
 
   const cartCount = useMemo(
@@ -282,7 +287,7 @@ const makeOnAdd = useCallback(
 
   // ---------- RENDER ----------
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-neutral-50">
       <Header
         config={config}
         onCartClick={() => setOpen(true)}
@@ -311,7 +316,7 @@ const makeOnAdd = useCallback(
 
           {/* Status visual de aberto/fechado */}
           <p
-            className={`mt-2 text-sm font-semibold ${
+            className={`mt-2 text-sm text-center font-semibold ${
               lojaAberta ? "text-green-600" : "text-red-500"
             }`}
           >
@@ -320,43 +325,63 @@ const makeOnAdd = useCallback(
               : "No momento estamos fechados para pedidos ⛔"}
           </p>
         </div>
-
         {/* Categorias */}
-        <div className="sticky top-0 bg-gray-50 z-40 pb-3 mb-6 border-b">
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide py-3 min-h-[80px]">
+        <div className="sticky top-0 bg-gray-50/80 backdrop-blur-md z-40 pb-4 mb-6 border-b border-gray-200/50">
+          <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-4 px-4 sm:justify-center">
             {categories.length === 0 && isLoadingProducts ? (
-              // Skeleton das categorias para evitar “pulo” quando chegarem
+              /* Skeleton condizente com o novo design */
               <>
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
-                    className="min-w-[80px] h-14 rounded-lg bg-gray-200 animate-pulse"
+                    className="min-w-[90px] h-[72px] rounded-[1.5rem] bg-gray-200 animate-pulse"
                   />
                 ))}
               </>
             ) : (
-              categories.map((cat, idx) => (
-                <button
-                  key={cat.name || `categoria-${idx}`}
-                  onClick={() => setActiveCategory(cat.name)}
-                  className={`flex flex-col items-center px-3 py-2 rounded-lg min-w-[80px] text-xs sm:text-sm font-medium transition-all
-                    ${
-                      activeCategory === cat.name
-                        ? "bg-blue-500 text-white shadow-lg"
-                        : "bg-white text-gray-700 hover:bg-gray-100"
-                    }`}
-                >
-                  <span className="text-lg sm:text-xl mb-1">{cat.icon}</span>
-                  {cat.name}
-                </button>
-              ))
+              categories.map((cat, idx) => {
+                const isActive = activeCategory === cat.name;
+                return (
+                  <button
+                    key={cat.name || `categoria-${idx}`}
+                    onClick={() => setActiveCategory(cat.name)}
+                    className={`
+                      relative flex flex-col items-center justify-center 
+                      min-w-[90px] p-3 rounded-[1.5rem] 
+                      transition-all duration-300 ease-out
+                      ${isActive 
+                        ? "bg-gray-900 text-white shadow-xl shadow-gray-200 -translate-y-1" 
+                        : "bg-white text-gray-500 hover:bg-gray-100 border border-transparent shadow-sm"
+                      }
+                    `}
+                  >
+                    {/* Ícone com animação sutil */}
+                    <span className={`text-2xl mb-1 transition-transform ${isActive ? "scale-125" : "group-hover:scale-110"}`}>
+                      {cat.icon}
+                    </span>
+                    
+                    <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? "text-white" : "text-gray-500"}`}>
+                      {cat.name}
+                    </span>
+
+                    {/* Ponto indicador para a categoria ativa */}
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTab"
+                        className="absolute -bottom-1 w-1.5 h-1.5 bg-orange-500 rounded-full"
+                      />
+                    )}
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
 
         {/* Produtos */}
-        <div className="w-full max-w-7xl mx-auto space-y-10">
-          {isLoadingProducts ? (
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-7xl space-y-10">
+            {isLoadingProducts ? (
             // Skeleton de produtos: evita CLS quando os itens reais aparecem
             <div>
               <h2 className="text-lg sm:text-xl font-semibold text-gray-300 mb-5 border-b pb-2">
@@ -374,10 +399,11 @@ const makeOnAdd = useCallback(
           ) : orderedGroups.length > 0 ? (
             orderedGroups.map(([group, items]) => (
               <div key={group}>
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-5 border-b pb-2">
-                  {group}
+                <h2 className="flex items-center gap-3 text-2xl sm:text-3xl font-extrabold text-gray-900 mb-5">
+                  <span className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+                  <span>{group}</span>
                 </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 justify-items-center">
                   {items.map((p, idx) => (
                     <ProductCard
                       key={p.id || `${p.name || "produto"}-${idx}`}
@@ -394,6 +420,7 @@ const makeOnAdd = useCallback(
               Nenhum produto encontrado.
             </p>
           )}
+          </div>
         </div>
       </main>
 
@@ -468,15 +495,27 @@ const makeOnAdd = useCallback(
       </p>
 
       {config?.instagram && (
-        <div className="flex justify-center px-4 mb-6">
+        <div className="px-4 mb-8 max-w-2xl mx-auto">
           <a
             href={config.instagram}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-pink-500 to-yellow-500 text-white font-semibold shadow-lg hover:opacity-90 transition"
+            className="group relative flex items-center justify-between p-4 rounded-[2rem] bg-white shadow-sm border border-gray-100 hover:shadow-md transition-all overflow-hidden"
           >
-            <FaInstagram size={22} />
-            Siga a {config.nomeLoja || "nossa loja"} no Instagram
+            {/* Efeito de brilho ao passar o mouse */}
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            <div className="flex items-center gap-4 relative z-10">
+              {/* Ícone com Gradiente */}
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-lg group-hover:scale-110 transition-transform">
+                <FaInstagram size={24} />
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Instagram</span>
+                <span className="text-gray-800 font-black">@{config.nomeLoja?.replace(/\s+/g, '').toLowerCase() || "nossaloja"}</span>
+              </div>
+            </div>
           </a>
         </div>
       )}

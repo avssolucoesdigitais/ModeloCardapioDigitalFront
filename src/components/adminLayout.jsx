@@ -1,9 +1,10 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut } from "react-icons/fi";
 import { FaPizzaSlice, FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
-import logo from "../assets/logo.icon.png"
+import logo from "../assets/logo.icon.png";
 
 export default function AdminLayout() {
   const location = useLocation();
@@ -11,114 +12,128 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const menuItems = [
-    { path: "/admin/pedidos", label: "Pedidos", icon: <FiBox /> },
-    { path: "/admin/produtos", label: "Produtos", icon: <FaPizzaSlice /> },
-    { path: "/admin/historico", label: "Histórico", icon: <FiClock /> },
-    { path: "/admin/config", label: "Configuração", icon: <FiSettings /> },
+    { path: "/admin/pedidos", label: "Pedidos", icon: <FiBox size={20} /> },
+    { path: "/admin/produtos", label: "Produtos", icon: <FaPizzaSlice size={18} /> },
+    { path: "/admin/historico", label: "Histórico", icon: <FiClock size={20} /> },
+    { path: "/admin/config", label: "Configuração", icon: <FiSettings size={20} /> },
   ];
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      window.location.href = "/login";
-    } catch (err) {
-      console.error("Erro ao deslogar:", err);
+    if (window.confirm("Deseja realmente sair?")) {
+      try {
+        await signOut(auth);
+        window.location.href = "/login";
+      } catch (err) { console.error(err); }
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-[#F5F6FA] to-[#E9ECF5]">
-      {/* Botão menu mobile */}
+    <div className="min-h-screen flex bg-[#F8FAFC]">
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
+
       <button
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-[#0C2340] text-white rounded-full shadow-lg hover:scale-105 transition"
+        className="md:hidden fixed bottom-6 right-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-2xl active:scale-90 transition-transform"
         onClick={() => setSidebarOpen(!sidebarOpen)}
       >
-        {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+        {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
       </button>
 
-      {/* Sidebar */}
       <aside
-        className={`fixed md:static top-0 left-0 min-h-screen w-64 bg-gradient-to-b from-[#0C2340] to-[#1B2C50] text-white flex flex-col transform transition-transform duration-300 z-40 shadow-xl
+        className={`fixed md:static inset-y-0 left-0 w-72 bg-[#0F172A] text-slate-300 flex flex-col transition-all duration-300 z-50
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
-        {/* Logo / Título */}
-        <div className="px-6 py-6 font-bold text-2xl tracking-wide flex items-center flex-col justify-center border-b border-[#1A2E50]">
-          <div>
-            <img src={logo} alt="logo" className= "h-25 w-25 "/>
-          </div>
-          <span className="bg-gradient-to-r from-[#009DFF] to-[#00E5FF] text-transparent bg-clip-text">
-            La-Carta
-          </span>
+        <div className="p-8 flex flex-col items-center border-b border-slate-800">
+          <img src={logo} alt="logo" className="h-16 w-16 brightness-0 invert opacity-90 mb-3" />
+          <h2 className="text-white font-black tracking-tighter text-xl">LA-CARTA</h2>
         </div>
 
-        {/* Menu */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setSidebarOpen(false)} // Fecha menu no mobile
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium
-                ${
-                  location.pathname === item.path
-                    ? "bg-gradient-to-r from-[#009DFF] to-[#0066CC] text-white shadow-md scale-[1.02] border-l-4 border-[#00E5FF]"
-                    : "hover:bg-[#1A2E50] hover:scale-[1.02]"
-                }`}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
+        <nav className="flex-1 px-4 py-8 space-y-1">
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={`relative group flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold transition-all
+                  ${isActive ? "text-white" : "hover:text-white hover:bg-slate-800/50"}`}
+              >
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-blue-600 rounded-xl -z-10 shadow-lg shadow-blue-900/20"
+                  />
+                )}
+                <span className={`${isActive ? "text-white" : "text-slate-500 group-hover:text-blue-400"}`}>
+                  {item.icon}
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* Contato com suporte */}
-        <div className="px-4 py-4 border-t border-[#1A2E50] flex flex-col items-center gap-3 text-lg">
-          <div className="flex gap-4">
-            <a
-              href="https://www.instagram.com/sasp_dev/?next=%2F"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-pink-400 transition"
-            >
-              <FaInstagram />
+        {/* Card de Suporte - AVANTE SOFTWARE */}
+        <div className="p-4 mx-4 mb-4 bg-slate-900/60 rounded-2xl border border-slate-800">
+          <div className="flex flex-col items-center mb-4">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Desenvolvido por
+            </span>
+            <span className="text-xs font-bold text-slate-200">
+              Avante Software
+            </span>
+            <div className="h-0.5 w-8 bg-blue-600 rounded-full mt-1"></div>
+          </div>
+          
+          <div className="flex justify-around mb-4">
+            <a href="https://wa.me/5588981356668" target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg hover:text-green-400 transition-colors">
+              <FaWhatsapp size={16}/>
             </a>
-            <a
-              href="https://www.linkedin.com/in/sanderley-santos-681918211"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-blue-400 transition"
-            >
-              <FaLinkedin />
+            <a href="#" className="p-2 bg-slate-800 rounded-lg hover:text-pink-400 transition-colors">
+              <FaInstagram size={16}/>
             </a>
-            <a
-              href="https://wa.me/5588981356668"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-green-400 transition"
-            >
-              <FaWhatsapp />
+            <a href="#" className="p-2 bg-slate-800 rounded-lg hover:text-blue-400 transition-colors">
+              <FaLinkedin size={16}/>
             </a>
           </div>
-          <p className="text-xs font-medium text-center">
-            Entre em contato com a equipe de suporte
-          </p>
-        </div>
 
-        {/* Botão de sair */}
-        <div className="px-4 py-6 border-t border-[#1A2E50]">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-[#E63946] to-[#FF4D6D] hover:opacity-90 text-white font-semibold shadow-lg transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 hover:bg-red-500/10 hover:text-red-400 text-slate-400 font-bold text-[10px] transition-all uppercase tracking-wider border border-slate-700/50"
           >
-            <FiLogOut /> Sair
+            <FiLogOut size={12} /> Sair do Sistema
           </button>
         </div>
       </aside>
 
-      {/* Conteúdo */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md p-6 md:p-8">
-          <Outlet />
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="h-16 bg-white border-b border-slate-200 px-8 items-center justify-between hidden md:flex">
+          <span className="text-slate-400 font-medium">
+            Painel Administrativo &gt; <span className="text-slate-900 font-bold capitalize">{location.pathname.split('/').pop()}</span>
+          </span>
+          <div className="flex items-center gap-2">
+             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+             <span className="text-xs font-bold text-slate-600">Sistema Online</span>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <motion.div 
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-7xl mx-auto"
+          >
+            <Outlet />
+          </motion.div>
         </div>
       </main>
     </div>
