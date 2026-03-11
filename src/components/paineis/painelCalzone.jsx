@@ -10,7 +10,7 @@ function parsePreco(preco) {
   return 0;
 }
 
-export default function PainelCalzone() {
+export default function PainelCalzone({ lojaId }) {
   const [docData, setDocData] = useState({
     produtos: [],
     bases: [],
@@ -32,14 +32,14 @@ export default function PainelCalzone() {
 
   useEffect(() => {
     (async () => {
-      const ref = doc(db, "opcoes", "Calzone");
+      const ref = doc(db, "lojas", lojaId, "opcoes", "Calzone");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Calzone");
+    const ref = doc(db, "lojas", lojaId, "opcoes", "Calzone");
     await setDoc(ref, next, { merge: true });
     setDocData(next);
   }

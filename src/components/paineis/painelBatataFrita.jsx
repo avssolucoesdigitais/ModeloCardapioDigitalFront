@@ -9,7 +9,7 @@ function parsePreco(preco) {
   return 0;
 }
 
-export default function PainelBatata() {
+export default function PainelBatata({ lojaId }) {
   const [docData, setDocData] = useState({ produtos: [] });
   const [editingIdx, setEditingIdx] = useState(null);
   const [loadingImg, setLoadingImg] = useState(false);
@@ -28,14 +28,14 @@ export default function PainelBatata() {
 
   useEffect(() => {
     (async () => {
-      const ref = doc(db, "opcoes", "Batata");
+      const ref = doc(db, "lojas", lojaId, "opcoes", "Batata");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Batata");
+    const ref = doc(db, "lojas", lojaId, "opcoes", "Batata");
     await setDoc(ref, next, { merge: true });
     setDocData(next);
   }

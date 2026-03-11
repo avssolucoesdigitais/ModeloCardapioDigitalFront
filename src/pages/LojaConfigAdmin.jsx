@@ -3,14 +3,15 @@ import { db } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import useAuth from "../hooks/useAuth";
 import toast from "react-hot-toast";
+import uploadToCloudinary from "../utils/uploadToCloudinary";
 
 const DIAS_ORDENADOS = [
   { key: "segunda", label: "Segunda" },
-  { key: "terca", label: "Terça" },
+  { key: "terça", label: "Terça" },
   { key: "quarta", label: "Quarta" },
   { key: "quinta", label: "Quinta" },
   { key: "sexta", label: "Sexta" },
-  { key: "sabado", label: "Sábado" },
+  { key: "sábado", label: "Sábado" },
   { key: "domingo", label: "Domingo" },
 ];
 
@@ -39,10 +40,20 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
   const updateFirestore = async (newData) => {
     setSaving(true);
     try {
-      await setDoc(doc(db, "lojas", lojaId, "config", "principal"), newData, { merge: true });
-      setConfig(newData);
+      // Sanitiza horarios removendo undefined
+      const horariosSanitizados = Object.fromEntries(
+        Object.entries(newData.horarios || {}).map(([k, v]) => [
+          k, { abre: v?.abre || "", fecha: v?.fecha || "" }
+        ])
+      );
+      const dataFinal = { ...newData, horarios: horariosSanitizados };
+      await setDoc(doc(db, "lojas", lojaId, "config", "principal"), dataFinal, { merge: true });
+      setConfig(dataFinal);
       toast.success("Alteração salva!");
-    } catch (e) { toast.error("Erro ao salvar"); }
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao salvar: " + e.message);
+    }
     finally { setSaving(false); }
   };
 
@@ -58,9 +69,9 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
       {/* Tabs Estilizadas */}
       <nav className="flex gap-2 p-1 bg-slate-200/50 rounded-2xl mb-8 w-fit">
         {[
-          { id: "loja", label: "🏪 Identidade", icon: "🎨" },
-          { id: "bairros", label: "🚚 Logística", icon: "📍" },
-          { id: "horarios", label: "⏰ Funcionamento", icon: "🕒" },
+          { id: "loja", label: "🏪 Identidade" },
+          { id: "bairros", label: "🚚 Logística" },
+          { id: "horarios", label: "⏰ Funcionamento" },
         ].map(t => (
           <button
             key={t.id}
@@ -105,8 +116,8 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                    <UploadBtn label="Mudar Logo" onUpload={url => setConfig({...config, logoUrl: url})} />
-                    <UploadBtn label="Mudar Banner" onUpload={url => setConfig({...config, bannerUrl: url})} />
+                  <UploadBtn label="Mudar Logo" onUpload={url => setConfig({...config, logoUrl: url})} />
+                  <UploadBtn label="Mudar Banner" onUpload={url => setConfig({...config, bannerUrl: url})} />
                 </div>
               </div>
             </div>
@@ -114,26 +125,26 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
 
           {/* Seção de Cupons */}
           <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
-             <h2 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-               <span className="bg-amber-100 p-2 rounded-xl text-sm">🎟️</span> Cupons de Desconto
-             </h2>
-             <div className="flex gap-2 mb-6">
-               <input type="text" placeholder="CÓDIGO" className="bg-slate-50 border-none rounded-xl p-3 text-sm font-bold flex-1" value={cupom.codigo} onChange={e => setCupom({...cupom, codigo: e.target.value.toUpperCase()})} />
-               <input type="number" placeholder="R$ 0,00" className="bg-slate-50 border-none rounded-xl p-3 text-sm font-bold w-32" value={cupom.valor} onChange={e => setCupom({...cupom, valor: e.target.value})} />
-               <button onClick={() => {
-                 const novos = [...config.cupons, { ...cupom, valor: Number(cupom.valor) }];
-                 updateFirestore({...config, cupons: novos});
-                 setCupom({codigo: "", valor: ""});
-               }} className="bg-slate-900 text-white px-6 rounded-xl font-black text-sm">+</button>
-             </div>
-             <div className="flex flex-wrap gap-2">
-               {config.cupons?.map(c => (
-                 <div key={c.codigo} className="bg-amber-50 border border-amber-100 px-4 py-2 rounded-2xl flex items-center gap-3">
-                   <span className="text-xs font-black text-amber-700">{c.codigo} • R$ {c.valor}</span>
-                   <button onClick={() => updateFirestore({...config, cupons: config.cupons.filter(x => x.codigo !== c.codigo)})} className="text-amber-300 hover:text-amber-600">✕</button>
-                 </div>
-               ))}
-             </div>
+            <h2 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+              <span className="bg-amber-100 p-2 rounded-xl text-sm">🎟️</span> Cupons de Desconto
+            </h2>
+            <div className="flex gap-2 mb-6">
+              <input type="text" placeholder="CÓDIGO" className="bg-slate-50 border-none rounded-xl p-3 text-sm font-bold flex-1" value={cupom.codigo} onChange={e => setCupom({...cupom, codigo: e.target.value.toUpperCase()})} />
+              <input type="number" placeholder="R$ 0,00" className="bg-slate-50 border-none rounded-xl p-3 text-sm font-bold w-32" value={cupom.valor} onChange={e => setCupom({...cupom, valor: e.target.value})} />
+              <button onClick={() => {
+                const novos = [...config.cupons, { ...cupom, valor: Number(cupom.valor) }];
+                updateFirestore({...config, cupons: novos});
+                setCupom({codigo: "", valor: ""});
+              }} className="bg-slate-900 text-white px-6 rounded-xl font-black text-sm">+</button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {config.cupons?.map(c => (
+                <div key={c.codigo} className="bg-amber-50 border border-amber-100 px-4 py-2 rounded-2xl flex items-center gap-3">
+                  <span className="text-xs font-black text-amber-700">{c.codigo} • R$ {c.valor}</span>
+                  <button onClick={() => updateFirestore({...config, cupons: config.cupons.filter(x => x.codigo !== c.codigo)})} className="text-amber-300 hover:text-amber-600">✕</button>
+                </div>
+              ))}
+            </div>
           </section>
           
           <button onClick={() => updateFirestore(config)} disabled={saving} className="fixed bottom-6 right-6 md:relative md:bottom-0 md:right-0 w-full md:w-auto bg-blue-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl shadow-blue-200 transition-all hover:scale-105 active:scale-95">
@@ -150,9 +161,9 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
             <input type="text" placeholder="Nome do Bairro" className="bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold" value={bairro.nome} onChange={e => setBairro({...bairro, nome: e.target.value})} />
             <input type="number" placeholder="Taxa R$" className="bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold" value={bairro.taxa} onChange={e => setBairro({...bairro, taxa: e.target.value})} />
             <button onClick={() => {
-               const novos = [...config.bairros, { ...bairro, taxa: Number(bairro.taxa) }];
-               updateFirestore({...config, bairros: novos});
-               setBairro({nome: "", taxa: ""});
+              const novos = [...config.bairros, { ...bairro, taxa: Number(bairro.taxa) }];
+              updateFirestore({...config, bairros: novos});
+              setBairro({nome: "", taxa: ""});
             }} className="bg-emerald-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-emerald-100">Adicionar</button>
           </div>
           
@@ -180,16 +191,33 @@ export default function LojaConfigAdmin({ lojaId = "daypizza" }) {
                 <div key={dia.key} className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-3xl transition-all ${isClosed ? 'bg-slate-50 opacity-60' : 'bg-white border border-slate-100 shadow-sm'}`}>
                   <span className="text-sm font-black text-slate-700 uppercase tracking-tighter w-24">{dia.label}</span>
                   <div className="flex items-center gap-3 mt-2 md:mt-0">
-                    <input type="time" value={config.horarios[dia.key]?.abre} onChange={e => setConfig({...config, horarios: {...config.horarios, [dia.key]: {...config.horarios[dia.key], abre: e.target.value}}})} className="bg-slate-100 border-none rounded-xl p-2 text-xs font-bold" />
+                    <input
+                      type="time"
+                      value={config.horarios[dia.key]?.abre || ""}
+                      onChange={e => setConfig({...config, horarios: {...config.horarios, [dia.key]: {...config.horarios[dia.key], abre: e.target.value}}})}
+                      className="bg-slate-100 border-none rounded-xl p-2 text-xs font-bold"
+                    />
                     <span className="text-[10px] font-black text-slate-400">ATÉ</span>
-                    <input type="time" value={config.horarios[dia.key]?.fecha} onChange={e => setConfig({...config, horarios: {...config.horarios, [dia.key]: {...config.horarios[dia.key], fecha: e.target.value}}})} className="bg-slate-100 border-none rounded-xl p-2 text-xs font-bold" />
-                    <button onClick={() => setConfig({...config, horarios: {...config.horarios, [dia.key]: {abre: "", fecha: ""}}})} className="ml-2 text-[10px] font-black text-rose-500 uppercase">Fechar</button>
+                    <input
+                      type="time"
+                      value={config.horarios[dia.key]?.fecha || ""}
+                      onChange={e => setConfig({...config, horarios: {...config.horarios, [dia.key]: {...config.horarios[dia.key], fecha: e.target.value}}})}
+                      className="bg-slate-100 border-none rounded-xl p-2 text-xs font-bold"
+                    />
+                    <button
+                      onClick={() => setConfig({...config, horarios: {...config.horarios, [dia.key]: {abre: "", fecha: ""}}})}
+                      className="ml-2 text-[10px] font-black text-rose-500 uppercase"
+                    >
+                      Fechar
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
-          <button onClick={() => updateFirestore(config)} className="mt-8 w-full bg-slate-900 text-white p-4 rounded-2xl font-black">Salvar Grade de Horários</button>
+          <button onClick={() => updateFirestore(config)} className="mt-8 w-full bg-slate-900 text-white p-4 rounded-2xl font-black">
+            Salvar Grade de Horários
+          </button>
         </div>
       )}
     </div>
@@ -214,13 +242,17 @@ const ColorPicker = ({ label, value, onChange }) => (
 const UploadBtn = ({ label, onUpload }) => (
   <label className="flex-1 text-center bg-white border border-slate-200 p-2 rounded-xl text-[10px] font-black uppercase cursor-pointer hover:bg-slate-50 transition-all">
     {label}
-    <input type="file" className="hidden" onChange={async e => {
-       const file = e.target.files[0];
-       if(file) {
-          toast.loading("Enviando...");
-          // Aqui chamaria sua função uploadToCloudinary
-          toast.dismiss();
-       }
+    <input type="file" className="hidden" accept="image/*" onChange={async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const toastId = toast.loading("Enviando imagem...");
+      try {
+        const url = await uploadToCloudinary(file);
+        onUpload(url);
+        toast.success("Imagem enviada!", { id: toastId });
+      } catch (err) {
+        toast.error("Erro no upload: " + err.message, { id: toastId });
+      }
     }} />
   </label>
 );

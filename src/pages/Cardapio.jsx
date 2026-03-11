@@ -13,12 +13,14 @@ import { GiFullPizza } from "react-icons/gi";
 import { MdLocalOffer } from "react-icons/md";
 import { FaInstagram } from "react-icons/fa";
 import { motion } from "framer-motion";
+import { useParams } from "react-router-dom";
 
 // Modais
 import PizzaBuilderModal from "../components/BuiderModal/PizzaBuilderModal";
 import PastelBuilderModal from "../components/BuiderModal/PastelBuilderModal.jsx";
 
 /* ====== CONSTANTES / HELPERS FORA DO COMPONENTE ====== */
+
 const DIA_KEYS = [
   "domingo",
   "segunda",
@@ -44,7 +46,6 @@ const ALL_CATEGORIES = [
   { name: "Combos", icon: "🎁" },
 ];
 
-// mesma altura sempre, mesmo sem banner -> evita CLS
 const BANNER_HEIGHT_CLASSES = "h-40 sm:h-56 md:h-72 lg:h-80";
 
 function normalizeCategory(cat) {
@@ -58,7 +59,7 @@ function isLojaAberta(config) {
   if (!config?.horarios) return false;
 
   const agora = new Date();
-  const diaSemana = DIA_KEYS[agora.getDay()]; // 0 = domingo ... 6 = sábado
+  const diaSemana = DIA_KEYS[agora.getDay()];
   const infoDia = config.horarios[diaSemana];
 
   if (!infoDia || !infoDia.abre || !infoDia.fecha) return false;
@@ -70,20 +71,20 @@ function isLojaAberta(config) {
   const minutosAbre = abreH * 60 + abreM;
   const minutosFecha = fechaH * 60 + fechaM;
 
-  // Ex.: 18:00 às 23:00 (mesmo dia)
   if (minutosAbre <= minutosFecha) {
     return minutosAgora >= minutosAbre && minutosAgora <= minutosFecha;
   }
 
-  // Ex.: 18:00 às 02:00 (vira pra madrugada)
   return minutosAgora >= minutosAbre || minutosAgora <= minutosFecha;
 }
 
 export default function Cardapio() {
-  const cart = useCart();
-  const { config } = useLojaConfig("daypizza");
+  const { lojaSlug } = useParams();
+  const LOJA_ID = lojaSlug;  
 
-  // ---------- ESTADOS ----------
+  const cart = useCart();
+  const { config } = useLojaConfig(LOJA_ID);
+
   const [products, setProducts] = useState([]);
   const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
   const [search, setSearch] = useState("");
@@ -91,37 +92,33 @@ export default function Cardapio() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Todas");
 
-  // Controle de horário
   const [lojaAberta, setLojaAberta] = useState(true);
   const [horarioModalOpen, setHorarioModalOpen] = useState(false);
 
-  // Pizza
   const [pizzaOpen, setPizzaOpen] = useState(false);
   const [basePizza, setBasePizza] = useState(null);
   const [pizzaPreset, setPizzaPreset] = useState(null);
 
-
-  // Pastel
   const [pastelOpen, setPastelOpen] = useState(false);
   const [basePastel, setBasePastel] = useState(null);
   const [pastelPreset, setPastelPreset] = useState(null);
 
   const isLoadingProducts = !hasLoadedProducts;
 
-  // ---------- CARREGAR PRODUTOS (coleção "opcoes") ----------
+  // ✅ CORRIGIDO: opcoes agora dentro da loja
   useEffect(() => {
-    const ref = collection(db, "opcoes");
+    const ref = collection(db, "lojas", LOJA_ID, "opcoes");
 
     const unsubscribe = onSnapshot(ref, (snapshot) => {
       const arr = [];
 
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        const categoria = docSnap.id; // Pizza, Hamburguer, Pastel, etc.
+        const categoria = docSnap.id;
 
         (data.produtos || []).forEach((p, idx) => {
           arr.push({
-            id: p.id || `${docSnap.id}-${idx}`, // id estável (sem Date.now)
+            id: p.id || `${docSnap.id}-${idx}`,
             ...p,
             name: p.nome || p.name,
             description: p.desc || p.description,
@@ -143,7 +140,6 @@ export default function Cardapio() {
     return () => unsubscribe();
   }, []);
 
-  // ---------- MONITORAR HORÁRIO DE FUNCIONAMENTO ----------
   useEffect(() => {
     if (!config || !config.horarios) {
       setLojaAberta(false);
@@ -154,13 +150,11 @@ export default function Cardapio() {
       setLojaAberta(isLojaAberta(config));
     }
 
-    atualizarStatus(); // primeira vez
-
-    const id = setInterval(atualizarStatus, 60 * 1000); // atualiza a cada 1 min
+    atualizarStatus();
+    const id = setInterval(atualizarStatus, 60 * 1000);
     return () => clearInterval(id);
   }, [config]);
 
-  // ---------- CATEGORIAS (memoizadas) ----------
   const availableCategories = useMemo(() => {
     if (!products.length) return [];
     return ALL_CATEGORIES.filter((cat) =>
@@ -173,7 +167,6 @@ export default function Cardapio() {
     return [{ name: "Todas", icon: <GiFullPizza /> }, ...availableCategories];
   }, [availableCategories, products.length]);
 
-  // ---------- AGRUPAMENTO (memoizado) ----------
   const groupedProducts = useMemo(() => {
     if (!products.length) return {};
 
@@ -185,7 +178,7 @@ export default function Cardapio() {
           (p.name || "").toLowerCase().includes(search.toLowerCase())
       )
       .reduce((acc, p) => {
-        const group =  p.category || "Outros";
+        const group = p.category || "Outros";
         if (!acc[group]) acc[group] = [];
         acc[group].push(p);
         return acc;
@@ -200,84 +193,72 @@ export default function Cardapio() {
     });
   }, [groupedProducts]);
 
-  // ---------- ADICIONAR AO CARRINHO (useCallback) ----------
-  // Dentro de makeOnAdd
+  const makeOnAdd = useCallback(
+    (p) => (itemFromCard) => {
+      if (!lojaAberta) {
+        setHorarioModalOpen(true);
+        return;
+      }
 
-const makeOnAdd = useCallback(
-  (p) => (itemFromCard) => {
-    if (!lojaAberta) {
-      setHorarioModalOpen(true);
-      return;
-    }
+      const catNorm = normalizeCategory(p.category);
 
-    const catNorm = normalizeCategory(p.category);
-
-    // ---- PIZZA ----
-    if (catNorm === "pizza") {
-      setBasePizza(p);
-      setPizzaPreset({
-        size: itemFromCard?.size || "",
-        firstFlavorId: itemFromCard?.firstFlavorId || p.id,
-      });
-      setPizzaOpen(true);
-      return;
-    }
-
-
-    // ---- PASTEL (correção) ----
-    if (catNorm === "pastel") {
-      const hasSizes = p.prices && Object.keys(p.prices).length > 0;
-      const hasAddons = p.adicionais && p.adicionais.length > 0;
-
-      const shouldUseModal = p.montar === true || hasSizes || hasAddons;
-
-      if (shouldUseModal) {
-        setBasePastel(p);
-        setPastelPreset({
+      if (catNorm === "pizza") {
+        setBasePizza(p);
+        setPizzaPreset({
           size: itemFromCard?.size || "",
           firstFlavorId: itemFromCard?.firstFlavorId || p.id,
         });
-        setPastelOpen(true);
+        setPizzaOpen(true);
+        return;
+      }
+
+      if (catNorm === "pastel") {
+        const hasSizes = p.prices && Object.keys(p.prices).length > 0;
+        const hasAddons = p.adicionais && p.adicionais.length > 0;
+        const shouldUseModal = p.montar === true || hasSizes || hasAddons;
+
+        if (shouldUseModal) {
+          setBasePastel(p);
+          setPastelPreset({
+            size: itemFromCard?.size || "",
+            firstFlavorId: itemFromCard?.firstFlavorId || p.id,
+          });
+          setPastelOpen(true);
+          return;
+        }
+
+        cart.add({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          description: p.description,
+          price:
+            itemFromCard?.price ??
+            p.preco ??
+            p.price ??
+            (p.prices ? Object.values(p.prices)[0] : 0),
+          size: itemFromCard?.size || "único",
+          image: p.image,
+          qty: itemFromCard?.qty ?? 1,
+        });
         return;
       }
 
       cart.add({
-        id: p.id,
-        name: p.name,
-        category: p.category,
-        description: p.description,
-        price:
-          itemFromCard?.price ??
-          p.preco ??
-          p.price ??
-          (p.prices ? Object.values(p.prices)[0] : 0),
-        size: itemFromCard?.size || "único",
-        image: p.image,
+        ...itemFromCard,
         qty: itemFromCard?.qty ?? 1,
       });
-      return;
-    }
-
-    // ---- OUTRAS CATEGORIAS ----
-    cart.add({
-      ...itemFromCard,
-      qty: itemFromCard?.qty ?? 1,
-    });
-  },
-  [lojaAberta, cart]
-);
+    },
+    [lojaAberta, cart]
+  );
 
   const handleCheckout = useCallback(() => {
     if (!lojaAberta) {
       setHorarioModalOpen(true);
       return;
     }
-
     setOpen(false);
-
-    setTimeout(() => {
-      setCheckoutOpen(true);
-    }, 300); 
+    setTimeout(() => setCheckoutOpen(true), 300);
   }, [lojaAberta]);
 
   const cartCount = useMemo(
@@ -285,7 +266,6 @@ const makeOnAdd = useCallback(
     [cart.items]
   );
 
-  // ---------- RENDER ----------
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50">
       <Header
@@ -295,7 +275,6 @@ const makeOnAdd = useCallback(
         onSearchChange={setSearch}
       />
 
-      {/* Banner com espaço reservado SEMPRE -> menos CLS e LCP melhor */}
       <div
         className={`w-full ${BANNER_HEIGHT_CLASSES} rounded-b-lg shadow overflow-hidden bg-gray-200`}
       >
@@ -304,17 +283,15 @@ const makeOnAdd = useCallback(
             src={config.bannerUrl}
             alt={config?.nomeLoja || "Banner"}
             className="w-full h-full object-cover"
-            loading="eager"         // ajuda o LCP
-            fetchPriority="high"    // Chrome prioriza este recurso
+            loading="eager"
+            fetchPriority="high"
           />
         )}
       </div>
 
       <main className="flex-1 w-full px-3 sm:px-6 py-6">
         <div className="mb-6">
-          <HorarioFuncionamento />
-
-          {/* Status visual de aberto/fechado */}
+          <HorarioFuncionamento lojaId={LOJA_ID}/>
           <p
             className={`mt-2 text-sm text-center font-semibold ${
               lojaAberta ? "text-green-600" : "text-red-500"
@@ -325,11 +302,10 @@ const makeOnAdd = useCallback(
               : "No momento estamos fechados para pedidos ⛔"}
           </p>
         </div>
-        {/* Categorias */}
+
         <div className="sticky top-0 bg-gray-50/80 backdrop-blur-md z-40 pb-4 mb-6 border-b border-gray-200/50">
           <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-4 px-4 sm:justify-center">
             {categories.length === 0 && isLoadingProducts ? (
-              /* Skeleton condizente com o novo design */
               <>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
@@ -349,24 +325,20 @@ const makeOnAdd = useCallback(
                       relative flex flex-col items-center justify-center 
                       min-w-[90px] p-3 rounded-[1.5rem] 
                       transition-all duration-300 ease-out
-                      ${isActive 
-                        ? "bg-gray-900 text-white shadow-xl shadow-gray-200 -translate-y-1" 
+                      ${isActive
+                        ? "bg-gray-900 text-white shadow-xl shadow-gray-200 -translate-y-1"
                         : "bg-white text-gray-500 hover:bg-gray-100 border border-transparent shadow-sm"
                       }
                     `}
                   >
-                    {/* Ícone com animação sutil */}
                     <span className={`text-2xl mb-1 transition-transform ${isActive ? "scale-125" : "group-hover:scale-110"}`}>
                       {cat.icon}
                     </span>
-                    
                     <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? "text-white" : "text-gray-500"}`}>
                       {cat.name}
                     </span>
-
-                    {/* Ponto indicador para a categoria ativa */}
                     {isActive && (
-                      <motion.div 
+                      <motion.div
                         layoutId="activeTab"
                         className="absolute -bottom-1 w-1.5 h-1.5 bg-orange-500 rounded-full"
                       />
@@ -378,103 +350,74 @@ const makeOnAdd = useCallback(
           </div>
         </div>
 
-        {/* Produtos */}
         <div className="w-full flex justify-center">
           <div className="w-full max-w-7xl space-y-10">
             {isLoadingProducts ? (
-            // Skeleton de produtos: evita CLS quando os itens reais aparecem
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-300 mb-5 border-b pb-2">
-                &nbsp;
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-40 sm:h-48 rounded-xl bg-gray-200 animate-pulse"
-                  />
-                ))}
-              </div>
-            </div>
-          ) : orderedGroups.length > 0 ? (
-            orderedGroups.map(([group, items]) => (
-              <div key={group}>
-                <h2 className="flex items-center gap-3 text-2xl sm:text-3xl font-extrabold text-gray-900 mb-5">
-                  <span className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
-                  <span>{group}</span>
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 justify-items-center">
-                  {items.map((p, idx) => (
-                    <ProductCard
-                      key={p.id || `${p.name || "produto"}-${idx}`}
-                      p={p}
-                      onAdd={makeOnAdd(p)}
-                      disabled={!lojaAberta}
-                    />
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-300 mb-5 border-b pb-2">&nbsp;</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="h-40 sm:h-48 rounded-xl bg-gray-200 animate-pulse" />
                   ))}
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500 text-center mt-8">
-              Nenhum produto encontrado.
-            </p>
-          )}
+            ) : orderedGroups.length > 0 ? (
+              orderedGroups.map(([group, items]) => (
+                <div key={group}>
+                  <h2 className="flex items-center gap-3 text-2xl sm:text-3xl font-extrabold text-gray-900 mb-5">
+                    <span className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+                    <span>{group}</span>
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 justify-items-center">
+                    {items.map((p, idx) => (
+                      <ProductCard
+                        key={p.id || `${p.name || "produto"}-${idx}`}
+                        p={p}
+                        onAdd={makeOnAdd(p)}
+                        disabled={!lojaAberta}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center mt-8">Nenhum produto encontrado.</p>
+            )}
           </div>
         </div>
       </main>
 
-      {/* Carrinho */}
-      <CartPanel
-        open={open}
-        onClose={() => setOpen(false)}
-        cart={cart}
-        onCheckout={handleCheckout}
-      />
+      <CartPanel open={open} onClose={() => setOpen(false)} cart={cart} onCheckout={handleCheckout} />
 
-      {/* Checkout */}
       <CheckoutModal
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         cart={cart}
         whatsapp={config?.whatsapp}
+        lojaId={LOJA_ID}
       />
 
-      {/* Modais de montagem */}
       <PizzaBuilderModal
         open={pizzaOpen}
-        onClose={() => {
-          setPizzaOpen(false);
-          setBasePizza(null);
-          setPizzaPreset(null);
-        }}
+        onClose={() => { setPizzaOpen(false); setBasePizza(null); setPizzaPreset(null); }}
         products={products}
         baseProduct={basePizza}
         preset={pizzaPreset}
         onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
       />
 
-    
-
       <PastelBuilderModal
         open={pastelOpen}
-        onClose={() => {
-          setPastelOpen(false);
-          setBasePastel(null);
-          setPastelPreset(null);
-        }}
+        onClose={() => { setPastelOpen(false); setBasePastel(null); setPastelPreset(null); }}
         baseProduct={basePastel}
         preset={pastelPreset}
         onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })}
       />
 
-      {/* SUB TELA / MODAL DE HORÁRIO DE FUNCIONAMENTO */}
       {horarioModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6 text-center">
-            <h2 className="text-lg font-semibold mb-2">
-              Estamos fechados no momento
-            </h2>
+            <h2 className="text-lg font-semibold mb-2">Estamos fechados no momento</h2>
             <p className="text-gray-600 text-sm mb-4">
               Aceitamos pedidos apenas dentro do horário de funcionamento da loja.
               <br />
@@ -490,9 +433,7 @@ const makeOnAdd = useCallback(
         </div>
       )}
 
-      <p className="text-center text-gray-400 text-xs mt-8 mb-4">
-        Imagens meramente ilustrativas
-      </p>
+      <p className="text-center text-gray-400 text-xs mt-8 mb-4">Imagens meramente ilustrativas</p>
 
       {config?.instagram && (
         <div className="px-4 mb-8 max-w-2xl mx-auto">
@@ -502,15 +443,11 @@ const makeOnAdd = useCallback(
             rel="noopener noreferrer"
             className="group relative flex items-center justify-between p-4 rounded-[2rem] bg-white shadow-sm border border-gray-100 hover:shadow-md transition-all overflow-hidden"
           >
-            {/* Efeito de brilho ao passar o mouse */}
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-
             <div className="flex items-center gap-4 relative z-10">
-              {/* Ícone com Gradiente */}
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-lg group-hover:scale-110 transition-transform">
                 <FaInstagram size={24} />
               </div>
-
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Instagram</span>
                 <span className="text-gray-800 font-black">@{config.nomeLoja?.replace(/\s+/g, '').toLowerCase() || "nossaloja"}</span>

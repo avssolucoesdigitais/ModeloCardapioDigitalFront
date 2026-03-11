@@ -10,7 +10,7 @@ function parsePreco(preco) {
   return 0;
 }
 
-export default function PainelHamburguer() {
+export default function PainelHamburguer({ lojaId }) {
   const [docData, setDocData] = useState({ produtos: [], adicionais: [] });
   const [form, setForm] = useState({
     name: "",
@@ -26,14 +26,14 @@ export default function PainelHamburguer() {
 
   useEffect(() => {
     (async () => {
-      const ref = doc(db, "opcoes", "Hamburguer");
+      const ref = doc(db, "lojas", lojaId, "opcoes", "Hamburguer");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Hamburguer"); // Corrigido para Capitalizado se for o padrão
+    const ref = doc(db, "lojas", lojaId, "opcoes", "Hamburguer"); // Corrigido para Capitalizado se for o padrão
     await setDoc(ref, next, { merge: true });
     setDocData(next);
   }

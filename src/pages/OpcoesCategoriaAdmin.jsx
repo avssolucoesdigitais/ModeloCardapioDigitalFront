@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { CATEGORIES } from "../utils/categoriasConfig";
 
-// Importa os painéis
 import PainelPizza from "../components/paineis/PainelPizza";
 import PainelHamburguer from "../components/paineis/painelHamburgue";
 import PainelPastel from "../components/paineis/painelPastel";
@@ -27,17 +27,17 @@ const PAINEL_MAP = {
 };
 
 function OpcoesCategoriaAdmin() {
+  const { lojaSlug } = useParams(); // ✅ pega o slug da URL
   const [activeCat, setActiveCat] = useState("Pizza");
 
   const ActivePanel = PAINEL_MAP[activeCat];
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20">
-      {/* Header Dinâmico */}
       <header className="bg-white px-6 py-8 border-b border-gray-200">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">
-            Cardápio <span className="text-blue-600 flex-shrink-0 inline-flex items-center">Digital</span>
+            Cardápio <span className="text-blue-600">Digital</span>
           </h1>
           <p className="text-gray-500 font-medium mt-1">
             Selecione uma categoria para editar os produtos e preços.
@@ -46,13 +46,10 @@ function OpcoesCategoriaAdmin() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 mt-8">
-        {/* Grid de Categorias Profissional */}
         <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {CATEGORIES.map((cat) => {
             const isActive = activeCat === cat.id;
-            // Extraímos a cor do config (ex: bg-red-500) para usar no brilho e borda
             const categoryColor = cat.color || "bg-blue-500";
-            
             return (
               <button
                 key={cat.id}
@@ -60,25 +57,18 @@ function OpcoesCategoriaAdmin() {
                 className={`
                   relative group flex flex-col items-center justify-center 
                   p-5 rounded-[2rem] transition-all duration-300
-                  ${isActive 
-                    ? `${categoryColor} text-white shadow-2xl shadow-current opacity-100 ring-4 ring-white` 
+                  ${isActive
+                    ? `${categoryColor} text-white shadow-2xl shadow-current opacity-100 ring-4 ring-white`
                     : "bg-white text-gray-600 hover:bg-gray-50 shadow-sm border border-gray-100"
                   }
                 `}
               >
-                {/* Ícone com animação */}
-                <span className={`
-                  text-3xl mb-2 transition-transform duration-500
-                  ${isActive ? "scale-125 rotate-12" : "group-hover:scale-110"}
-                `}>
+                <span className={`text-3xl mb-2 transition-transform duration-500 ${isActive ? "scale-125 rotate-12" : "group-hover:scale-110"}`}>
                   {cat.icon()}
                 </span>
-
-                <span className={`text-xs font-black uppercase tracking-widest text-center`}>
+                <span className="text-xs font-black uppercase tracking-widest text-center">
                   {cat.nome}
                 </span>
-
-                {/* Badge de Selecionado */}
                 {isActive && (
                   <div className="absolute -top-2 -right-2 bg-white text-black w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-current">
                     <span className="text-[10px]">⭐</span>
@@ -89,7 +79,6 @@ function OpcoesCategoriaAdmin() {
           })}
         </section>
 
-        {/* Divisor Visual */}
         <div className="flex items-center gap-4 my-12">
           <div className="h-[2px] flex-1 bg-gray-200 rounded-full"></div>
           <span className="text-gray-400 font-black uppercase text-[10px] tracking-[0.3em]">
@@ -98,9 +87,9 @@ function OpcoesCategoriaAdmin() {
           <div className="h-[2px] flex-1 bg-gray-200 rounded-full"></div>
         </div>
 
-        {/* Conteúdo do Painel */}
         <div className="transition-all duration-500">
-           {ActivePanel && <ActivePanel />}
+          {/* ✅ passa lojaId para todos os painéis */}
+          {ActivePanel && <ActivePanel lojaId={lojaSlug} />}
         </div>
       </div>
     </div>
