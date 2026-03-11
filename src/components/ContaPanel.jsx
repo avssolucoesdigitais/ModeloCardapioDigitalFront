@@ -2,8 +2,12 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
+import { useParams } from "react-router-dom";
 
-export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza" }) {
+export default function ContaPanel({ open, onClose, onLogin }) {
+  const { lojaSlug } = useParams();
+  const lojaId = lojaSlug;
+
   const [phone, setPhone] = useState("");
   const [nome, setNome] = useState("");
   const [bairro, setBairro] = useState("");
@@ -16,15 +20,14 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
   const [tab, setTab] = useState("cadastro");
   const [bairrosDisponiveis, setBairrosDisponiveis] = useState([]);
 
-  // 🔹 Carregar config da loja (bairros permitidos)
   useEffect(() => {
+    if (!lojaId) return;
     const loadConfig = async () => {
       try {
         const ref = doc(db, "lojas", lojaId, "config", "principal");
         const snap = await getDoc(ref);
         if (snap.exists()) {
-          const data = snap.data();
-          setBairrosDisponiveis(data.bairros || []);
+          setBairrosDisponiveis(snap.data().bairros || []);
         }
       } catch (err) {
         console.error("Erro ao carregar bairros:", err);
@@ -33,7 +36,6 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
     loadConfig();
   }, [lojaId]);
 
-  // 🔹 Carregar dados do usuário salvo
   useEffect(() => {
     const savedPhone = localStorage.getItem("userPhone");
     if (savedPhone) loadUser(savedPhone);
@@ -54,25 +56,34 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
         setPagamento(data.pagamentoPreferido || "pix");
         onLogin({ id: phoneNumber, ...data });
 
-        // 🔹 Pedidos anteriores
+        // ✅ Escuta pedidos em tempo real com status correto
         const pedidosRef = collection(db, "users", phoneNumber, "pedidos");
-        onSnapshot(pedidosRef, async (snap) => {
-          const arr = await Promise.all(
-            snap.docs.map(async (d) => {
-              const data = d.data();
-              const orderRef = doc(db, "orders", d.id);
-              const orderSnap = await getDoc(orderRef);
+        onSnapshot(pedidosRef, (snap) => {
+          const unsubscribes = [];
+          const pedidosMap = {};
 
-              return {
-                id: d.id,
-                ...data,
+          snap.docs.forEach((d) => {
+            const pedidoBase = { id: d.id, ...d.data() };
+            pedidosMap[d.id] = pedidoBase;
+
+            // ✅ Caminho correto: lojas/{lojaId}/orders/{id}
+            const orderRef = doc(db, "lojas", lojaId, "orders", d.id);
+            const unsub = onSnapshot(orderRef, (orderSnap) => {
+              pedidosMap[d.id] = {
+                ...pedidosMap[d.id],
                 status: orderSnap.exists()
                   ? orderSnap.data().status
-                  : data.status || "PENDENTE",
+                  : pedidoBase.status || "PENDENTE",
               };
-            })
-          );
-          setPedidos(arr.sort((a, b) => (b.createdAt > a.createdAt ? -1 : 1)));
+              const arr = Object.values(pedidosMap).sort((a, b) =>
+                b.createdAt > a.createdAt ? 1 : -1
+              );
+              setPedidos(arr);
+            });
+            unsubscribes.push(unsub);
+          });
+
+          return () => unsubscribes.forEach((u) => u());
         });
       }
     } catch (err) {
@@ -103,17 +114,7 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
       );
 
       localStorage.setItem("userPhone", phone);
-
-      onLogin({
-        id: phone,
-        telefone: phone,
-        nome,
-        bairro,
-        rua,
-        numero,
-        referencia,
-        pagamentoPreferido: pagamento,
-      });
+      onLogin({ id: phone, telefone: phone, nome, bairro, rua, numero, referencia, pagamentoPreferido: pagamento });
       alert("Cadastro atualizado com sucesso!");
     } catch (err) {
       console.error("Erro ao salvar cadastro:", err);
@@ -125,30 +126,32 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40" onClick={onClose} />
+    <>
+      {/* Backdrop acima de tudo */}
+      <div
+        className="fixed inset-0 z-[200] bg-black/40"
+        onClick={onClose}
+      />
 
-      {/* 🔹 Responsivo: tela cheia no mobile, sidebar no desktop */}
-      <div className="w-full sm:w-[420px] h-full bg-white shadow-2xl flex flex-col animate-slideIn">
+      {/* Painel */}
+      <div
+        className="fixed top-0 right-0 z-[201] w-full sm:w-[420px] bg-white shadow-2xl flex flex-col"
+        style={{ height: "100dvh" }}
+      >
         {/* Cabeçalho */}
-        <div className="flex justify-between items-center p-4 border-b bg-blue-600 text-white">
+        <div className="flex justify-between items-center p-4 border-b bg-blue-600 text-white shrink-0">
           <h2 className="text-lg font-semibold">Minha Conta</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-blue-700 rounded-full transition"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-blue-700 rounded-full transition">
             <X />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b">
+        <div className="flex border-b shrink-0">
           <button
             onClick={() => setTab("cadastro")}
             className={`flex-1 py-3 font-medium ${
-              tab === "cadastro"
-                ? "border-b-4 border-blue-600 text-blue-600"
-                : "text-gray-500 hover:text-black"
+              tab === "cadastro" ? "border-b-4 border-blue-600 text-blue-600" : "text-gray-500 hover:text-black"
             }`}
           >
             Cadastro
@@ -156,9 +159,7 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
           <button
             onClick={() => setTab("pedidos")}
             className={`flex-1 py-3 font-medium ${
-              tab === "pedidos"
-                ? "border-b-4 border-blue-600 text-blue-600"
-                : "text-gray-500 hover:text-black"
+              tab === "pedidos" ? "border-b-4 border-blue-600 text-blue-600" : "text-gray-500 hover:text-black"
             }`}
           >
             Pedidos
@@ -166,29 +167,16 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
           {tab === "cadastro" && (
             <div className="flex flex-col gap-3">
-              <input
-                type="tel"
-                placeholder="Telefone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Nome completo"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="tel" placeholder="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)}
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="text" placeholder="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)}
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500" />
 
-              <select
-                value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={bairro} onChange={(e) => setBairro(e.target.value)}
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option value="">Selecione um bairro...</option>
                 {bairrosDisponiveis.map((b, idx) => (
                   <option key={idx} value={b.nome}>
@@ -197,33 +185,15 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
                 ))}
               </select>
 
-              <input
-                type="text"
-                placeholder="Rua"
-                value={rua}
-                onChange={(e) => setRua(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Número"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Ponto de referência"
-                value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
-                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="text" placeholder="Rua" value={rua} onChange={(e) => setRua(e.target.value)}
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="text" placeholder="Número" value={numero} onChange={(e) => setNumero(e.target.value)}
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="text" placeholder="Ponto de referência" value={referencia} onChange={(e) => setReferencia(e.target.value)}
+                className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500" />
 
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
-              >
+              <button onClick={handleSave} disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
                 {loading ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -236,39 +206,25 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
               ) : (
                 <div className="space-y-3">
                   {pedidos.map((p) => (
-                    <div
-                      key={p.id}
-                      className="border rounded-lg p-4 bg-gray-50 shadow-sm"
-                    >
+                    <div key={p.id} className="border rounded-lg p-4 bg-gray-50 shadow-sm">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-gray-800">
-                          Pedido #{p.orderNumber}
-                        </span>
-                        <span
-                          className={`text-xs px-2 py-1 rounded ${
-                            p.status === "FINALIZADO"
-                              ? "bg-green-100 text-blue-700"
-                              : p.status === "EM ANDAMENTO"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {p.status}
+                        <span className="font-semibold text-gray-800">Pedido #{p.orderNumber}</span>
+                        <span className={`text-xs px-2 py-1 rounded font-bold ${
+                          p.status === "FINALIZADO" ? "bg-green-100 text-green-700"
+                          : p.status === "EM ANDAMENTO" ? "bg-blue-100 text-blue-700"
+                          : "bg-yellow-100 text-yellow-700"
+                        }`}>
+                          {p.status || "PENDENTE"}
                         </span>
                       </div>
                       <div className="mt-2 text-sm text-gray-700">
                         Total: <strong>R$ {Number(p.total).toFixed(2)}</strong>
                       </div>
                       <div className="text-xs text-gray-500">
-                        {p.createdAt
-                          ? new Date(p.createdAt).toLocaleString("pt-BR", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : ""}
+                        {p.createdAt ? new Date(p.createdAt).toLocaleString("pt-BR", {
+                          day: "2-digit", month: "2-digit", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        }) : ""}
                       </div>
                     </div>
                   ))}
@@ -278,6 +234,6 @@ export default function ContaPanel({ open, onClose, onLogin, lojaId = "daypizza"
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }

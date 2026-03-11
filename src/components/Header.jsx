@@ -7,7 +7,6 @@ import ContaPanel from "./ContaPanel";
 export default function Header({ onCartClick, cartCount = 0, onSearchChange, config }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [contaOpen, setContaOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState(null);
 
   const primary = config?.primaryColor || "#000000";
@@ -16,13 +15,6 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
   const logoUrl = config?.logoUrl || "/default-logo.png";
   const whatsapp = config?.whatsapp || "558999999999";
 
-  // Efeito de scroll para deixar o header flutuante
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   useEffect(() => {
     const savedUser = localStorage.getItem("userPhone");
     if (savedUser) setUser({ telefone: savedUser });
@@ -30,27 +22,23 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
 
   return (
     <header
-      style={{ 
-        backgroundColor: isScrolled ? `${primary}EE` : primary,
-        backdropFilter: isScrolled ? "blur(10px)" : "none" 
-      }}
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        isScrolled ? "py-2 shadow-lg" : "py-4"
-      } text-white`}
+      style={{ backgroundColor: primary }}
+      className="sticky top-0 z-50 shadow-md text-white"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-8">
-        
-        {/* Logo Section */}
+      {/* Safe area para notch/status bar */}
+      <div style={{ height: "env(safe-area-inset-top)", backgroundColor: primary }} />
+
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-8 py-4">
+
+        {/* Logo + Nome */}
         <div className="flex items-center gap-3 cursor-pointer group">
-          <div className="shadow-inner transition-transform group-hover:scale-110">
-            <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />
-          </div>
-          <span className="text-xl font-black tracking-tight hidden sm:block">
+          <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain transition-transform group-hover:scale-110" />
+          <span className="text-sm sm:text-xl font-black tracking-tight">
             {nomeLoja}
           </span>
         </div>
 
-        {/* Busca Centralizada (Desktop) */}
+        {/* Busca — Desktop */}
         <div className="hidden md:flex flex-1 max-w-md mx-8 relative">
           <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/60" />
           <input
@@ -62,19 +50,20 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
         </div>
 
         {/* Ações */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          
-          {/* WhatsApp - Minimalista no Desktop */}
+        <div className="flex items-center gap-2 sm:gap-3">
+
+          {/* WhatsApp — apenas desktop */}
           <a
             href={`https://wa.me/${whatsapp}`}
             target="_blank"
-            className="hidden lg:flex items-center gap-2 bg-green-500 hover:bg-green-600 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-md shadow-green-900/20"
+            rel="noreferrer"
+            className="hidden lg:flex items-center gap-2 bg-green-500 hover:bg-green-600 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-md"
           >
             <FaWhatsapp size={18} />
             Suporte
           </a>
 
-          {/* User / Conta */}
+          {/* Conta */}
           <button
             onClick={() => setContaOpen(true)}
             className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 transition-all border border-white/10"
@@ -82,7 +71,7 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
             <User size={20} />
           </button>
 
-          {/* Carrinho com Badge Animado */}
+          {/* Carrinho */}
           <button
             onClick={onCartClick}
             style={{ backgroundColor: secondary, color: primary }}
@@ -90,7 +79,7 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
           >
             <ShoppingCart size={20} />
             <span className="hidden sm:inline">Carrinho</span>
-            
+
             <AnimatePresence>
               {cartCount > 0 && (
                 <motion.span
@@ -99,18 +88,13 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
                   key={cartCount}
                   className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-lg font-black"
                 >
-                  <motion.span
-                    animate={{ y: [0, -3, 0] }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {cartCount}
-                  </motion.span>
+                  {cartCount}
                 </motion.span>
               )}
             </AnimatePresence>
           </button>
 
-          {/* Mobile Menu Toggle */}
+          {/* Menu mobile */}
           <button
             className="md:hidden p-2.5 rounded-2xl bg-white/10"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -120,7 +104,7 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Menu Mobile Dropdown */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -140,14 +124,16 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <button 
-                  onClick={() => setContaOpen(true)}
+                <button
+                  onClick={() => { setContaOpen(true); setMenuOpen(false); }}
                   className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-gray-100 text-gray-800 font-bold text-sm"
                 >
                   <User size={18} /> Conta
                 </button>
                 <a
                   href={`https://wa.me/${whatsapp}`}
+                  target="_blank"
+                  rel="noreferrer"
                   className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-green-50 text-green-600 font-bold text-sm"
                 >
                   <FaWhatsapp size={18} /> WhatsApp
