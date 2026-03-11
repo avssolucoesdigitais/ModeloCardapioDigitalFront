@@ -9,7 +9,7 @@ function parsePreco(preco) {
   return 0;
 }
 
-export default function PainelSalgadinhos() {
+export default function PainelSalgadinhos({ lojaId }) {
   const [docData, setDocData] = useState({ produtos: [], adicionais: [] });
   const [editingIdx, setEditingIdx] = useState(null);
   const [loadingImg, setLoadingImg] = useState(false);
@@ -23,14 +23,14 @@ export default function PainelSalgadinhos() {
 
   useEffect(() => {
     (async () => {
-      const ref = doc(db, "opcoes", "Salgadinhos");
+      const ref = doc(db, "lojas", lojaId, "opcoes", "Salgadinhos");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Salgadinhos");
+    const ref = doc(db, "lojas", lojaId, "opcoes", "Salgadinhos");
     await setDoc(ref, next, { merge: true });
     setDocData(next);
   }

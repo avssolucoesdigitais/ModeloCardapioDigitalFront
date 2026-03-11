@@ -4,15 +4,15 @@ import { doc, getDoc } from "firebase/firestore";
 import { FiClock, FiAlertTriangle, FiCheckCircle, FiXCircle } from "react-icons/fi";
 
 /* ===================== Configuração ===================== */
-const DIAS_KEYS = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+const DIAS_KEYS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const DIAS_LABEL = {
   domingo: "Domingo",
   segunda: "Segunda-feira",
-  terca: "Terça-feira",
+  terça: "Terça-feira",
   quarta: "Quarta-feira",
   quinta: "Quinta-feira",
   sexta: "Sexta-feira",
-  sabado: "Sábado",
+  sábado: "Sábado",
 };
 
 /* ===================== Utilitários ===================== */
@@ -111,11 +111,12 @@ function getStatus(horarios) {
 }
 
 /* ===================== Componente ===================== */
-export default function HorarioFuncionamento({ lojaId = "daypizza" }) {
+export default function HorarioFuncionamento({ lojaId }) {
   const [horarios, setHorarios] = useState(null);
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
+    if (!lojaId) return;
     (async () => {
       try {
         const snap = await getDoc(doc(db, "lojas", lojaId, "config", "principal"));

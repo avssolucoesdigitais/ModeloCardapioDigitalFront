@@ -44,7 +44,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
   const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // CUPOM
   const [cupom, setCupom] = useState("");
   const [desconto, setDesconto] = useState(0);
 
@@ -70,7 +69,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
     return valor < 0 ? 0 : valor;
   }, [total, desconto]);
 
-  // Carregar cadastro salvo
   useEffect(() => {
     const savedPhone = localStorage.getItem("userPhone");
     if (!savedPhone) return;
@@ -97,7 +95,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
     loadUser();
   }, []);
 
-  // CUPOM
   useEffect(() => {
     if (!cupom.trim() || !config?.cupons) {
       setDesconto(0);
@@ -105,10 +102,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
     }
 
     const codigo = cupom.trim().toLowerCase();
-
-    const c = config.cupons.find(
-      (cup) => cup.codigo.toLowerCase() === codigo
-    );
+    const c = config.cupons.find((cup) => cup.codigo.toLowerCase() === codigo);
 
     if (!c) {
       setDesconto(0);
@@ -155,6 +149,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
       const orderNumber = Date.now().toString().slice(-6);
 
+      // ✅ users continua global
       const userRef = doc(db, "users", phone);
       await setDoc(
         userRef,
@@ -174,6 +169,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
       const orderData = sanitize({
         orderNumber,
+        lojaId, // 🔹 referência da loja no pedido
         customer: nome,
         phone,
         address: enderecoFinal,
@@ -191,12 +187,18 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         createdAt: new Date().toISOString(),
       });
 
-      const orderDoc = await addDoc(collection(db, "orders"), orderData);
+      // ✅ CORRIGIDO: orders dentro da loja
+      const orderDoc = await addDoc(
+        collection(db, "lojas", lojaId, "orders"),
+        orderData
+      );
 
+      // ✅ users/pedidos continua global (histórico do cliente)
       await setDoc(
         doc(db, "users", phone, "pedidos", orderDoc.id),
         sanitize({
           orderNumber,
+          lojaId,
           items: itensCarrinho,
           total: totalComDesconto,
           desconto,
@@ -206,7 +208,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         { merge: true }
       );
 
-      // 🔥 AQUI: mensagem exatamente como antes, mas usando \n
       let msg = `🛒 *Novo Pedido*\n`;
       msg += `👤 Cliente: ${nome}\n`;
       msg += `📱 WhatsApp: ${phone}\n`;
@@ -263,7 +264,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
       }
       msg += `✅ Total: ${formatPreco(totalComDesconto)}`;
 
-      // 🔥 Só ajustei ESSA parte pra encodar certo e limpar o número:
       let adminPhone = "558999999999";
       if (typeof whatsapp === "string" && whatsapp.trim()) {
         const digits = whatsapp.replace(/\D/g, "");
@@ -279,12 +279,8 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         cart.setItems([]);
       }
 
-      // 2. Fechar o modal
       onClose();
-
-      // 3. Feedback opcional para o usuário
       alert("Pedido enviado com sucesso!");
-
     } catch (e) {
       console.error(e);
       alert("Erro ao processar o pedido.");
@@ -298,7 +294,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
         <h2 className="text-xl font-bold mb-4">Finalizar Pedido</h2>
 
-        {/* Resumo dos itens */}
         <div className="mb-4 space-y-2">
           {itensCarrinho.map((item, idx) => (
             <div key={idx} className="border rounded p-2 text-sm">
@@ -330,11 +325,8 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
           ))}
         </div>
 
-        {/* Cupom */}
         <label className="block mb-3">
-          <span className="text-sm text-gray-600">
-            Cupom de desconto (opcional)
-          </span>
+          <span className="text-sm text-gray-600">Cupom de desconto (opcional)</span>
           <input
             type="text"
             className="mt-1 w-full border rounded-lg px-3 py-2"
@@ -348,54 +340,31 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
           </div>
         )}
 
-        {/* Totais */}
         <div className="text-sm text-gray-600 mb-3">
           <div>Subtotal: {formatPreco(subtotal)}</div>
           <div>Taxa de entrega: {formatPreco(taxaEntrega)}</div>
           {desconto > 0 && <div>Desconto: {formatPreco(desconto)}</div>}
-          <div className="font-semibold">
-            Total: {formatPreco(totalComDesconto)}
-          </div>
+          <div className="font-semibold">Total: {formatPreco(totalComDesconto)}</div>
         </div>
 
-        {/* Formulário */}
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Seu nome</span>
-          <input
-            type="text"
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-          />
+          <input type="text" className="mt-1 w-full border rounded-lg px-3 py-2" value={nome} onChange={(e) => setNome(e.target.value)} />
         </label>
 
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Seu WhatsApp</span>
-          <input
-            type="tel"
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+          <input type="tel" className="mt-1 w-full border rounded-lg px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </label>
 
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Observações do pedido</span>
-          <textarea
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            rows={3}
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-          />
+          <textarea className="mt-1 w-full border rounded-lg px-3 py-2" rows={3} value={observacao} onChange={(e) => setObservacao(e.target.value)} />
         </label>
 
         <label className="block mb-4">
           <span className="text-sm text-gray-600">Entrega ou retirada</span>
-          <select
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={entrega}
-            onChange={(e) => setEntrega(e.target.value)}
-          >
+          <select className="mt-1 w-full border rounded-lg px-3 py-2" value={entrega} onChange={(e) => setEntrega(e.target.value)}>
             <option value="entrega">Entrega</option>
             <option value="retirada">Retirada</option>
           </select>
@@ -405,11 +374,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
           <div className="mb-4 space-y-3">
             <label className="block">
               <span className="text-sm text-gray-600">Bairro</span>
-              <select
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-                value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
-              >
+              <select className="mt-1 w-full border rounded-lg px-3 py-2" value={bairro} onChange={(e) => setBairro(e.target.value)}>
                 <option value="">Selecione...</option>
                 {config?.bairros?.map((b, idx) => (
                   <option key={idx} value={b.nome}>
@@ -421,45 +386,24 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
 
             <label className="block">
               <span className="text-sm text-gray-600">Rua</span>
-              <input
-                type="text"
-                value={rua}
-                onChange={(e) => setRua(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-              />
+              <input type="text" value={rua} onChange={(e) => setRua(e.target.value)} className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
 
             <label className="block">
               <span className="text-sm text-gray-600">Número</span>
-              <input
-                type="text"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-              />
+              <input type="text" value={numero} onChange={(e) => setNumero(e.target.value)} className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
 
             <label className="block">
-              <span className="text-sm text-gray-600">
-                Ponto de referência
-              </span>
-              <input
-                type="text"
-                value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-              />
+              <span className="text-sm text-gray-600">Ponto de referência</span>
+              <input type="text" value={referencia} onChange={(e) => setReferencia(e.target.value)} className="mt-1 w-full border rounded-lg px-3 py-2" />
             </label>
           </div>
         )}
 
         <label className="block mb-3">
           <span className="text-sm text-gray-600">Forma de pagamento</span>
-          <select
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            value={pagamento}
-            onChange={(e) => setPagamento(e.target.value)}
-          >
+          <select className="mt-1 w-full border rounded-lg px-3 py-2" value={pagamento} onChange={(e) => setPagamento(e.target.value)}>
             <option value="pix">PIX</option>
             <option value="dinheiro">Dinheiro</option>
             <option value="cartão">Cartão</option>
@@ -467,17 +411,10 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId = 
         </label>
 
         <div className="flex gap-3">
-          <button
-            onClick={handleConfirmar}
-            disabled={loading}
-            className="flex-1 bg-green-600 text-white py-2 rounded-2xl hover:opacity-90"
-          >
+          <button onClick={handleConfirmar} disabled={loading} className="flex-1 bg-green-600 text-white py-2 rounded-2xl hover:opacity-90">
             {loading ? "Processando..." : "Confirmar Pedido"}
           </button>
-          <button
-            onClick={onClose}
-            className="flex-1 border py-2 rounded-2xl hover:bg-gray-50"
-          >
+          <button onClick={onClose} className="flex-1 border py-2 rounded-2xl hover:bg-gray-50">
             Cancelar
           </button>
         </div>

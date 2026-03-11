@@ -9,7 +9,7 @@ function parsePreco(preco) {
   return 0;
 }
 
-export default function PainelBebida() {
+export default function PainelBebida({ lojaId }) {
   const [docData, setDocData] = useState({ produtos: [] });
   const [editingIdx, setEditingIdx] = useState(null);
   const [loadingImg, setLoadingImg] = useState(false);
@@ -28,14 +28,14 @@ export default function PainelBebida() {
 
   useEffect(() => {
     (async () => {
-      const ref = doc(db, "opcoes", "Bebida");
+      const ref = doc(db, "lojas", lojaId, "opcoes", "Bebida");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Bebida");
+    const ref = doc(db, "lojas", lojaId, "opcoes", "Bebida");
     await setDoc(ref, next, { merge: true });
     setDocData(next);
   }

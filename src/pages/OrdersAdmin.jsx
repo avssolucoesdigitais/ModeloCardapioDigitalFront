@@ -10,12 +10,12 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
-import { FiBell, FiBellOff, FiPrinter, FiTrash2, FiClock, FiCheck, FiPlay  } from "react-icons/fi";
+import { FiBell, FiBellOff, FiPrinter, FiTrash2, FiClock, FiCheck, FiPlay } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { useParams } from "react-router-dom";
 
 import notificacaoSound from "../sound/notificação.mp3";
 
-// Função para exibir tempo decorrido
 const getRelativeTime = (timestamp) => {
   if (!timestamp) return "";
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -24,7 +24,6 @@ const getRelativeTime = (timestamp) => {
   return `há ${diff} min`;
 };
 
-// 🔹 Helper para garantir que preço nunca vire NaN
 function parsePreco(value) {
   if (value === undefined || value === null) return 0;
   if (typeof value === "number") return value;
@@ -35,22 +34,25 @@ function parsePreco(value) {
 }
 
 export default function OrdersAdmin() {
+  const { lojaSlug } = useParams();
+  const LOJA_ID = lojaSlug;
+
   const [orders, setOrders] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const audioRef = useRef(null);
   const prevIdsRef = useRef([]);
 
-  // 🔹 Carregar preferências do som ao montar
   useEffect(() => {
     const pref = localStorage.getItem("soundEnabled");
-    if (pref !== null) {
-      setSoundEnabled(pref === "true");
-    }
+    if (pref !== null) setSoundEnabled(pref === "true");
   }, []);
 
-  // 🔹 Snapshot dos pedidos
+  // ✅ CORRIGIDO: orders dentro da loja
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(db, "lojas", LOJA_ID, "orders"),
+      orderBy("createdAt", "desc")
+    );
     const unsub = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setOrders(docs);
@@ -85,9 +87,10 @@ export default function OrdersAdmin() {
     toast(newValue ? "🔔 Notificações sonoras ativadas!" : "🔕 Som desativado");
   };
 
+  // ✅ CORRIGIDO: referência do doc dentro da loja
   const updateStatus = async (id, status) => {
     try {
-      await updateDoc(doc(db, "orders", id), {
+      await updateDoc(doc(db, "lojas", LOJA_ID, "orders", id), {
         status: status.trim().toUpperCase(),
       });
     } catch (err) {
@@ -95,17 +98,17 @@ export default function OrdersAdmin() {
     }
   };
 
+  // ✅ CORRIGIDO: referência do doc dentro da loja
   const deleteOrder = async (id) => {
     if (confirm("Tem certeza que deseja excluir este pedido?")) {
       try {
-        await deleteDoc(doc(db, "orders", id));
+        await deleteDoc(doc(db, "lojas", LOJA_ID, "orders", id));
       } catch (err) {
         console.error("❌ Erro ao excluir pedido:", err);
       }
     }
   };
 
-  // 🔹 Impressão da Cozinha
   const printOrderKitchen = (pedido) => {
     const numeroPedido = pedido.orderNumber || pedido.id.slice(-4).toUpperCase();
 
@@ -118,16 +121,8 @@ export default function OrdersAdmin() {
           </p>
           ${item.flavors ? `<p>🍕 Sabores: ${item.flavors.join(" / ")}</p>` : ""}
           ${item.crust ? `<p>🍞 Borda: ${item.crust.nome}</p>` : ""}
-          ${
-            item.addons?.length
-              ? `<p>➕ Adicionais: ${item.addons.map((a) => a.nome).join(", ")}</p>`
-              : ""
-          }
-          ${
-            item.observacoes
-              ? `<p style="color:red; font-weight:bold; font-size:18px;">📝 OBS: ${item.observacoes}</p>`
-              : ""
-          }
+          ${item.addons?.length ? `<p>➕ Adicionais: ${item.addons.map((a) => a.nome).join(", ")}</p>` : ""}
+          ${item.observacoes ? `<p style="color:red; font-weight:bold; font-size:18px;">📝 OBS: ${item.observacoes}</p>` : ""}
         </div>
       `
       )
@@ -137,18 +132,13 @@ export default function OrdersAdmin() {
       <html>
         <head>
           <title>Cozinha - Pedido #${numeroPedido}</title>
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 16px; }
-            h1 { font-size: 24px; margin-bottom: 15px; }
-          </style>
+          <style>body { font-family: Arial, sans-serif; font-size: 16px; } h1 { font-size: 24px; margin-bottom: 15px; }</style>
         </head>
         <body>
           <h1>👨‍🍳 COZINHA - PEDIDO #${numeroPedido}</h1>
           ${itensHTML || "<p>Nenhum item</p>"}
           <h2 style="margin-top:20px;">⚠️ Observação do Cliente:</h2>
-          <p style="color:red; font-weight:bold; font-size:18px;">
-            ${pedido.observacao || "Sem observações"}
-          </p>
+          <p style="color:red; font-weight:bold; font-size:18px;">${pedido.observacao || "Sem observações"}</p>
         </body>
       </html>
     `;
@@ -159,7 +149,6 @@ export default function OrdersAdmin() {
     janela.print();
   };
 
-  // 🔹 Impressão do Entregador
   const printOrderDelivery = (pedido) => {
     const numeroPedido = pedido.orderNumber || pedido.id.slice(-4).toUpperCase();
 
@@ -171,12 +160,8 @@ export default function OrdersAdmin() {
           <td>
             ${item.name} ${item.size ? `(${item.size})` : ""}
             ${item.flavors ? `<br/>🍕 ${item.flavors.join(" / ")}` : ""}
-            ${item.crust ? `<br/>🍞 ${item.crust.nome}</p>` : ""}
-            ${
-              item.addons?.length
-                ? `<br/>➕ ${item.addons.map((a) => a.nome).join(", ")}`
-                : ""
-            }
+            ${item.crust ? `<br/>🍞 ${item.crust.nome}` : ""}
+            ${item.addons?.length ? `<br/>➕ ${item.addons.map((a) => a.nome).join(", ")}` : ""}
           </td>
           <td style="text-align:right;">R$ ${(parsePreco(item.price) * (item.qty || 1)).toFixed(2)}</td>
         </tr>
@@ -199,11 +184,7 @@ export default function OrdersAdmin() {
             <tbody>${itensHTML}</tbody>
           </table>
           <p><strong>Total:</strong> R$ ${parsePreco(pedido.total).toFixed(2)}</p>
-          ${
-            pedido.observacao
-              ? `<p><strong>OBS Cliente:</strong> ${pedido.observacao}</p>`
-              : ""
-          }
+          ${pedido.observacao ? `<p><strong>OBS Cliente:</strong> ${pedido.observacao}</p>` : ""}
         </body>
       </html>
     `;
@@ -214,7 +195,6 @@ export default function OrdersAdmin() {
     janela.print();
   };
 
-  // 🔹 Estatísticas do dia
   const hoje = new Date().toISOString().slice(0, 10);
   const pedidosHoje = orders.filter((o) => {
     if (!o.createdAt) return false;
@@ -223,37 +203,27 @@ export default function OrdersAdmin() {
   });
 
   const totalPedidosHoje = pedidosHoje.length;
-  const totalFinalizados = pedidosHoje.filter(
-    (o) => (o.status || "").toUpperCase() === "FINALIZADO"
-  ).length;
-  const valorTotalHoje = pedidosHoje.reduce(
-    (acc, o) => acc + parsePreco(o.total),
-    0
-  );
-  const ticketMedio =
-    totalPedidosHoje > 0 ? valorTotalHoje / totalPedidosHoje : 0;
+  const totalFinalizados = pedidosHoje.filter((o) => (o.status || "").toUpperCase() === "FINALIZADO").length;
+  const valorTotalHoje = pedidosHoje.reduce((acc, o) => acc + parsePreco(o.total), 0);
+  const ticketMedio = totalPedidosHoje > 0 ? valorTotalHoje / totalPedidosHoje : 0;
 
-  const ativos = orders.filter(
-    (o) => (o.status || "").trim().toUpperCase() !== "FINALIZADO"
-  );
+  const ativos = orders.filter((o) => (o.status || "").trim().toUpperCase() !== "FINALIZADO");
 
   return (
     <div className="bg-slate-50 min-h-screen p-4 md:p-8 font-sans text-slate-900">
       <audio ref={audioRef} src={notificacaoSound} preload="auto" />
 
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header com Glassmorphism */}
         <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-200 gap-4">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-slate-800">Painel de pedidos</h1>
             <p className="text-slate-500 font-medium">Gestão de pedidos em tempo real</p>
           </div>
-          
           <button
             onClick={toggleSound}
             className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-bold transition-all active:scale-95 ${
-              soundEnabled 
-                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" 
+              soundEnabled
+                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
                 : "bg-slate-200 text-slate-600"
             }`}
           >
@@ -262,7 +232,6 @@ export default function OrdersAdmin() {
           </button>
         </header>
 
-        {/* Dashboard de Métricas Rápidas */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Hoje" value={totalPedidosHoje} color="blue" />
           <StatCard label="Finalizados" value={totalFinalizados} color="emerald" />
@@ -270,11 +239,10 @@ export default function OrdersAdmin() {
           <StatCard label="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} color="pink" />
         </section>
 
-        {/* Lista de Pedidos Ativos */}
         <main>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              📌 Pedidos em Aberto 
+              📌 Pedidos em Aberto
               <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">{ativos.length}</span>
             </h2>
           </div>
@@ -282,9 +250,9 @@ export default function OrdersAdmin() {
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
             <AnimatePresence>
               {ativos.map((o) => (
-                <OrderCard 
-                  key={o.id} 
-                  order={o} 
+                <OrderCard
+                  key={o.id}
+                  order={o}
                   updateStatus={updateStatus}
                   printKitchen={printOrderKitchen}
                   printDelivery={printOrderDelivery}
@@ -299,13 +267,12 @@ export default function OrdersAdmin() {
   );
 }
 
-// Sub-componente para os Cards de Pedido
 function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrder }) {
   const status = (order.status || "PENDENTE").toUpperCase();
   const isPendente = status === "PENDENTE";
 
   return (
-    <motion.article 
+    <motion.article
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -313,7 +280,6 @@ function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrd
         isPendente ? "border-orange-200 shadow-orange-100" : "border-blue-100 shadow-blue-50"
       } shadow-xl p-6`}
     >
-      {/* Indicador Lateral de Status */}
       <div className={`absolute left-0 top-0 bottom-0 w-2 ${isPendente ? "bg-orange-500" : "bg-blue-500"}`} />
 
       <div className="flex justify-between items-start mb-4">
@@ -349,26 +315,12 @@ function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrd
         )}
       </div>
 
-      {/* Ações do Fluxo */}
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <ActionButton 
-          active={status === "PENDENTE"} 
-          onClick={() => updateStatus(order.id, "PENDENTE")}
-          label="Pendente" icon={<FiClock />} color="orange"
-        />
-        <ActionButton 
-          active={status === "EM ANDAMENTO"} 
-          onClick={() => updateStatus(order.id, "EM ANDAMENTO")}
-          label="Preparar" icon={<FiPlay />} color="blue"
-        />
-        <ActionButton 
-          active={false} 
-          onClick={() => updateStatus(order.id, "FINALIZADO")}
-          label="Concluir" icon={<FiCheck />} color="emerald"
-        />
+        <ActionButton active={status === "PENDENTE"} onClick={() => updateStatus(order.id, "PENDENTE")} label="Pendente" icon={<FiClock />} color="orange" />
+        <ActionButton active={status === "EM ANDAMENTO"} onClick={() => updateStatus(order.id, "EM ANDAMENTO")} label="Preparar" icon={<FiPlay />} color="blue" />
+        <ActionButton active={false} onClick={() => updateStatus(order.id, "FINALIZADO")} label="Concluir" icon={<FiCheck />} color="emerald" />
       </div>
 
-      {/* Rodapé Utilitário */}
       <div className="flex gap-2 border-t border-slate-100 pt-4">
         <button onClick={() => printKitchen(order)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
           <FiPrinter /> Cozinha
@@ -384,7 +336,6 @@ function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrd
   );
 }
 
-// Componentes auxiliares de UI
 function StatCard({ label, value, color }) {
   const colors = {
     blue: "bg-blue-50 text-blue-700 border-blue-100",
@@ -404,7 +355,7 @@ function ActionButton({ active, onClick, label, icon, color }) {
   const colorMap = {
     orange: active ? "bg-orange-500 text-white shadow-lg shadow-orange-200" : "bg-orange-50 text-orange-500",
     blue: active ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-blue-50 text-blue-600",
-    emerald: "bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+    emerald: "bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white",
   };
   return (
     <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 p-3 rounded-2xl transition-all font-bold text-[10px] uppercase ${colorMap[color]}`}>

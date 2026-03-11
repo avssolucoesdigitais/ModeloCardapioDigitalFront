@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,21 +8,22 @@ import logo from "../assets/logo.icon.png";
 
 export default function AdminLayout() {
   const location = useLocation();
+  const { lojaSlug } = useParams(); // ✅ pega o slug da URL
   const auth = getAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const menuItems = [
-    { path: "/admin/pedidos", label: "Pedidos", icon: <FiBox size={20} /> },
-    { path: "/admin/produtos", label: "Produtos", icon: <FaPizzaSlice size={18} /> },
-    { path: "/admin/historico", label: "Histórico", icon: <FiClock size={20} /> },
-    { path: "/admin/config", label: "Configuração", icon: <FiSettings size={20} /> },
+    { path: `/${lojaSlug}/admin/pedidos`,   label: "Pedidos",       icon: <FiBox size={20} /> },
+    { path: `/${lojaSlug}/admin/produtos`,  label: "Produtos",      icon: <FaPizzaSlice size={18} /> },
+    { path: `/${lojaSlug}/admin/historico`, label: "Histórico",     icon: <FiClock size={20} /> },
+    { path: `/${lojaSlug}/admin/config`,    label: "Configuração",  icon: <FiSettings size={20} /> },
   ];
 
   const handleLogout = async () => {
     if (window.confirm("Deseja realmente sair?")) {
       try {
         await signOut(auth);
-        window.location.href = "/login";
+        window.location.href = `/${lojaSlug}/login`; // ✅ redireciona para login da loja
       } catch (err) { console.error(err); }
     }
   };
@@ -31,7 +32,7 @@ export default function AdminLayout() {
     <div className="min-h-screen flex bg-[#F8FAFC]">
       <AnimatePresence>
         {sidebarOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
             className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
@@ -67,7 +68,7 @@ export default function AdminLayout() {
                   ${isActive ? "text-white" : "hover:text-white hover:bg-slate-800/50"}`}
               >
                 {isActive && (
-                  <motion.div 
+                  <motion.div
                     layoutId="activeNav"
                     className="absolute inset-0 bg-blue-600 rounded-xl -z-10 shadow-lg shadow-blue-900/20"
                   />
@@ -81,7 +82,6 @@ export default function AdminLayout() {
           })}
         </nav>
 
-        {/* Card de Suporte - AVANTE SOFTWARE */}
         <div className="p-4 mx-4 mb-4 bg-slate-900/60 rounded-2xl border border-slate-800">
           <div className="flex flex-col items-center mb-4">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -92,7 +92,7 @@ export default function AdminLayout() {
             </span>
             <div className="h-0.5 w-8 bg-blue-600 rounded-full mt-1"></div>
           </div>
-          
+
           <div className="flex justify-around mb-4">
             <a href="https://wa.me/5588981356668" target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg hover:text-green-400 transition-colors">
               <FaWhatsapp size={16}/>
@@ -120,13 +120,13 @@ export default function AdminLayout() {
             Painel Administrativo &gt; <span className="text-slate-900 font-bold capitalize">{location.pathname.split('/').pop()}</span>
           </span>
           <div className="flex items-center gap-2">
-             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-             <span className="text-xs font-bold text-slate-600">Sistema Online</span>
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-xs font-bold text-slate-600">Sistema Online</span>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          <motion.div 
+          <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

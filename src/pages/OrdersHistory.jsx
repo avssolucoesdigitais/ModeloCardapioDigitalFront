@@ -10,20 +10,26 @@ import {
 } from "firebase/firestore";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useParams } from "react-router-dom";
 
-// Helpers permanecem os mesmos, mas organizados
 const normalize = (s) => (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const toDate = (createdAt) => createdAt?.toDate ? createdAt.toDate() : new Date(createdAt);
 const brl = (n) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0);
 
 export default function OrdersHistory() {
+  const { lojaSlug } = useParams();
+  const LOJA_ID = lojaSlug; 
   const [orders, setOrders] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [filter, setFilter] = useState("month");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
+  // ✅ CORRIGIDO: orders dentro da loja
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(db, "lojas", LOJA_ID, "orders"),
+      orderBy("createdAt", "desc")
+    );
     const unsub = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setOrders(docs.filter((o) => (o.status || "").toUpperCase() === "FINALIZADO"));
@@ -55,19 +61,22 @@ export default function OrdersHistory() {
     setFiltered(filteredOrders);
   }, [orders, filter, dateRange]);
 
+  // ✅ CORRIGIDO: deleteDoc com caminho correto
   const deleteOrder = async (id) => {
     if (confirm("Deseja remover este pedido do histórico permanentemente?")) {
-      try { await deleteDoc(doc(db, "orders", id)); } 
-      catch (err) { console.error("Erro:", err); }
+      try {
+        await deleteDoc(doc(db, "lojas", LOJA_ID, "orders", id));
+      } catch (err) {
+        console.error("Erro:", err);
+      }
     }
   };
 
-  // Logica de Relatório simplificada para o PDF
   const exportReport = () => {
     const docPdf = new jsPDF();
     docPdf.setFontSize(18);
     docPdf.text("Relatório de Vendas Faturadas", 14, 20);
-    
+
     const tableData = filtered.map((o) => [
       o.customer || "Consumidor",
       o.paymentMethod || "—",
@@ -87,11 +96,10 @@ export default function OrdersHistory() {
     docPdf.save(`relatorio-${filter}.pdf`);
   };
 
-  // Cálculos de Métricas
   const totalVendas = filtered.reduce((acc, o) => acc + Number(o.total || 0), 0);
   const totalPedidos = filtered.length;
   const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
-  
+
   const metodos = filtered.reduce((acc, o) => {
     const pm = normalize(o.paymentMethod);
     const val = Number(o.total || 0);
@@ -99,17 +107,16 @@ export default function OrdersHistory() {
     else if (pm.match(/cartao|credito|debito/)) { acc.cartao.val += val; acc.cartao.count++; }
     else if (pm.includes("dinheiro")) { acc.dinheiro.val += val; acc.dinheiro.count++; }
     return acc;
-  }, { 
-    pix: {val:0, count:0}, 
-    cartao: {val:0, count:0}, 
-    dinheiro: {val:0, count:0} 
+  }, {
+    pix: { val: 0, count: 0 },
+    cartao: { val: 0, count: 0 },
+    dinheiro: { val: 0, count: 0 }
   });
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] pb-10">
       <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
-        
-        {/* Header Profissional */}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Histórico de Vendas</h1>
@@ -123,34 +130,10 @@ export default function OrdersHistory() {
           </button>
         </div>
 
-        {/* Grid de Métricas (Dashboard Style) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard 
-            title="Faturamento Total" 
-            value={brl(totalVendas)} 
-            sub="Vendas finalizadas" 
-            color="text-emerald-700" 
-            bgColor="bg-emerald-50" // Fundo suave para o ícone
-            icon="💰" 
-          />
-          <MetricCard 
-            title="Total de Pedidos" 
-            value={totalPedidos} 
-            sub="Volume de vendas" 
-            color="text-blue-700" 
-            bgColor="bg-blue-50" 
-            icon="📦" 
-          />
-          <MetricCard 
-            title="Ticket Médio" 
-            value={brl(ticketMedio)} 
-            sub="Média por cliente" 
-            color="text-amber-700" 
-            bgColor="bg-amber-50" 
-            icon="🎯" 
-          />
-          
-          {/* Card de Métodos (ajustado para manter o padrão de altura) */}
+          <MetricCard title="Faturamento Total" value={brl(totalVendas)} sub="Vendas finalizadas" color="text-emerald-700" bgColor="bg-emerald-50" icon="💰" />
+          <MetricCard title="Total de Pedidos" value={totalPedidos} sub="Volume de vendas" color="text-blue-700" bgColor="bg-blue-50" icon="📦" />
+          <MetricCard title="Ticket Médio" value={brl(ticketMedio)} sub="Média por cliente" color="text-amber-700" bgColor="bg-amber-50" icon="🎯" />
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-center">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Métodos de Pagamento</p>
             <div className="space-y-1.5">
@@ -161,7 +144,6 @@ export default function OrdersHistory() {
           </div>
         </div>
 
-        {/* Filtros e Controles */}
         <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-wrap gap-2">
             {["day", "week", "month", "custom"].map((f) => (
@@ -178,15 +160,14 @@ export default function OrdersHistory() {
           </div>
 
           {filter === "custom" && (
-            <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-300">
-              <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-slate-50 border-none rounded-lg text-xs font-bold p-2 focus:ring-2 focus:ring-slate-200" />
+            <div className="flex items-center gap-2">
+              <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-slate-50 border-none rounded-lg text-xs font-bold p-2" />
               <span className="text-slate-400 font-bold">→</span>
-              <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-slate-50 border-none rounded-lg text-xs font-bold p-2 focus:ring-2 focus:ring-slate-200" />
+              <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-slate-50 border-none rounded-lg text-xs font-bold p-2" />
             </div>
           )}
         </div>
 
-        {/* Listagem Estilizada */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="hidden md:block">
             <table className="w-full text-left border-collapse">
@@ -217,7 +198,6 @@ export default function OrdersHistory() {
             </table>
           </div>
 
-          {/* Mobile View Cards */}
           <div className="md:hidden divide-y divide-slate-100">
             {filtered.map(o => (
               <div key={o.id} className="p-5 space-y-3">
@@ -247,25 +227,16 @@ export default function OrdersHistory() {
   );
 }
 
-// Subcomponentes para Limpeza de Código
 function MetricCard({ title, value, sub, color, icon, bgColor }) {
   return (
     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 transition-all hover:shadow-md">
-      {/* Círculo do Ícone em Destaque */}
       <div className={`w-12 h-12 rounded-2xl ${bgColor} flex items-center justify-center text-2xl shadow-inner`}>
         {icon}
       </div>
-      
       <div className="flex-1">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
-          {title}
-        </p>
-        <p className={`text-2xl font-black ${color} leading-none`}>
-          {value}
-        </p>
-        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
-          {sub}
-        </p>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{title}</p>
+        <p className={`text-2xl font-black ${color} leading-none`}>{value}</p>
+        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">{sub}</p>
       </div>
     </div>
   );

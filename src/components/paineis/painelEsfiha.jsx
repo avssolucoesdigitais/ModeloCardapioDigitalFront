@@ -10,7 +10,7 @@ function parsePreco(preco) {
   return 0;
 }
 
-export default function PainelEsfiha() {
+export default function PainelEsfiha({ lojaId }) {
   const [docData, setDocData] = useState({ produtos: [], adicionais: [] });
   const [form, setForm] = useState({
     name: "",
@@ -26,14 +26,14 @@ export default function PainelEsfiha() {
 
   useEffect(() => {
     (async () => {
-      const ref = doc(db, "opcoes", "Esfiha");
+      const ref = doc(db, "lojas", lojaId, "opcoes", "Esfiha");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
     })();
   }, []);
 
   async function saveDocData(next) {
-    const ref = doc(db, "opcoes", "Esfiha");
+    const ref = doc(db, "lojas", lojaId, "opcoes", "Esfiha");
     await setDoc(ref, next, { merge: true });
     setDocData(next);
   }
