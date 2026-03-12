@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, MapPin, Loader2 } from "lucide-react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
 import { useParams } from "react-router-dom";
+import useCep from "../hooks/useCep";
 
 export default function ContaPanel({ open, onClose, onLogin }) {
   const { lojaSlug } = useParams();
@@ -20,15 +21,15 @@ export default function ContaPanel({ open, onClose, onLogin }) {
   const [tab, setTab] = useState("cadastro");
   const [bairrosDisponiveis, setBairrosDisponiveis] = useState([]);
 
+  const { cep, setCep, loadingCep, cepErro, buscarCep } = useCep();
+
   useEffect(() => {
     if (!lojaId) return;
     const loadConfig = async () => {
       try {
         const ref = doc(db, "lojas", lojaId, "config", "principal");
         const snap = await getDoc(ref);
-        if (snap.exists()) {
-          setBairrosDisponiveis(snap.data().bairros || []);
-        }
+        if (snap.exists()) setBairrosDisponiveis(snap.data().bairros || []);
       } catch (err) {
         console.error("Erro ao carregar bairros:", err);
       }
@@ -54,35 +55,27 @@ export default function ContaPanel({ open, onClose, onLogin }) {
         setNumero(data.numero || "");
         setReferencia(data.referencia || "");
         setPagamento(data.pagamentoPreferido || "pix");
+        setCep(data.cep || "");
         onLogin({ id: phoneNumber, ...data });
 
-        // ✅ Escuta pedidos em tempo real com status correto
         const pedidosRef = collection(db, "users", phoneNumber, "pedidos");
         onSnapshot(pedidosRef, (snap) => {
           const unsubscribes = [];
           const pedidosMap = {};
-
           snap.docs.forEach((d) => {
             const pedidoBase = { id: d.id, ...d.data() };
             pedidosMap[d.id] = pedidoBase;
-
-            // ✅ Caminho correto: lojas/{lojaId}/orders/{id}
             const orderRef = doc(db, "lojas", lojaId, "orders", d.id);
             const unsub = onSnapshot(orderRef, (orderSnap) => {
               pedidosMap[d.id] = {
                 ...pedidosMap[d.id],
-                status: orderSnap.exists()
-                  ? orderSnap.data().status
-                  : pedidoBase.status || "PENDENTE",
+                status: orderSnap.exists() ? orderSnap.data().status : pedidoBase.status || "PENDENTE",
               };
-              const arr = Object.values(pedidosMap).sort((a, b) =>
-                b.createdAt > a.createdAt ? 1 : -1
-              );
+              const arr = Object.values(pedidosMap).sort((a, b) => b.createdAt > a.createdAt ? 1 : -1);
               setPedidos(arr);
             });
             unsubscribes.push(unsub);
           });
-
           return () => unsubscribes.forEach((u) => u());
         });
       }
@@ -91,30 +84,34 @@ export default function ContaPanel({ open, onClose, onLogin }) {
     }
   };
 
+  const handleCepChange = (e) => {
+    const valor = e.target.value;
+    buscarCep(valor, {
+      onSuccess: ({ rua: ruaFound, bairroNome }) => {
+        setRua(ruaFound);
+        // Tenta bater o bairro com os disponíveis
+        const match = bairrosDisponiveis.find(b =>
+          b.nome.toLowerCase().includes(bairroNome.toLowerCase()) ||
+          bairroNome.toLowerCase().includes(b.nome.toLowerCase())
+        );
+        if (match) setBairro(match.nome);
+      },
+    });
+  };
+
   const handleSave = async () => {
     if (!phone || !nome) return alert("Preencha telefone e nome!");
     if (!bairro) return alert("Selecione um bairro válido!");
-
     setLoading(true);
     try {
       const userRef = doc(db, "users", phone);
-      await setDoc(
-        userRef,
-        {
-          telefone: phone,
-          nome,
-          bairro,
-          rua,
-          numero,
-          referencia,
-          pagamentoPreferido: pagamento,
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
-
+      await setDoc(userRef, {
+        telefone: phone, nome, bairro, rua, numero,
+        referencia, pagamentoPreferido: pagamento,
+        cep, updatedAt: new Date(),
+      }, { merge: true });
       localStorage.setItem("userPhone", phone);
-      onLogin({ id: phone, telefone: phone, nome, bairro, rua, numero, referencia, pagamentoPreferido: pagamento });
+      onLogin({ id: phone, telefone: phone, nome, bairro, rua, numero, referencia, pagamentoPreferido: pagamento, cep });
       alert("Cadastro atualizado com sucesso!");
     } catch (err) {
       console.error("Erro ao salvar cadastro:", err);
@@ -127,43 +124,23 @@ export default function ContaPanel({ open, onClose, onLogin }) {
 
   return (
     <>
-      {/* Backdrop acima de tudo */}
-      <div
-        className="fixed inset-0 z-[200] bg-black/40"
-        onClick={onClose}
-      />
-
-      {/* Painel */}
-      <div
-        className="fixed top-0 right-0 z-[201] w-full sm:w-[420px] bg-white shadow-2xl flex flex-col"
-        style={{ height: "100dvh" }}
-      >
+      <div className="fixed inset-0 z-[200] bg-black/40" onClick={onClose} />
+      <div className="fixed top-0 right-0 z-[201] w-full sm:w-[420px] bg-white shadow-2xl flex flex-col" style={{ height: "100dvh" }}>
+        
         {/* Cabeçalho */}
         <div className="flex justify-between items-center p-4 border-b bg-blue-600 text-white shrink-0">
           <h2 className="text-lg font-semibold">Minha Conta</h2>
-          <button onClick={onClose} className="p-2 hover:bg-blue-700 rounded-full transition">
-            <X />
-          </button>
+          <button onClick={onClose} className="p-2 hover:bg-blue-700 rounded-full transition"><X /></button>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b shrink-0">
-          <button
-            onClick={() => setTab("cadastro")}
-            className={`flex-1 py-3 font-medium ${
-              tab === "cadastro" ? "border-b-4 border-blue-600 text-blue-600" : "text-gray-500 hover:text-black"
-            }`}
-          >
-            Cadastro
-          </button>
-          <button
-            onClick={() => setTab("pedidos")}
-            className={`flex-1 py-3 font-medium ${
-              tab === "pedidos" ? "border-b-4 border-blue-600 text-blue-600" : "text-gray-500 hover:text-black"
-            }`}
-          >
-            Pedidos
-          </button>
+          {["cadastro", "pedidos"].map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`flex-1 py-3 font-medium capitalize ${tab === t ? "border-b-4 border-blue-600 text-blue-600" : "text-gray-500 hover:text-black"}`}>
+              {t === "cadastro" ? "Cadastro" : "Pedidos"}
+            </button>
+          ))}
         </div>
 
         {/* Conteúdo */}
@@ -175,13 +152,25 @@ export default function ContaPanel({ open, onClose, onLogin }) {
               <input type="text" placeholder="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)}
                 className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500" />
 
+              {/* CEP */}
+              <div className="relative">
+                <input type="text" placeholder="CEP (somente números)" value={cep} onChange={handleCepChange}
+                  maxLength={9}
+                  className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500 w-full pr-10" />
+                {loadingCep && (
+                  <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-blue-500" />
+                )}
+                {!loadingCep && cep.replace(/\D/g,"").length === 8 && !cepErro && (
+                  <MapPin size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+                )}
+              </div>
+              {cepErro && <p className="text-xs text-red-500 -mt-2">{cepErro}</p>}
+
               <select value={bairro} onChange={(e) => setBairro(e.target.value)}
                 className="border text-black bg-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option value="">Selecione um bairro...</option>
                 {bairrosDisponiveis.map((b, idx) => (
-                  <option key={idx} value={b.nome}>
-                    {b.nome} - R$ {Number(b.taxa).toFixed(2)}
-                  </option>
+                  <option key={idx} value={b.nome}>{b.nome} - R$ {Number(b.taxa).toFixed(2)}</option>
                 ))}
               </select>
 
@@ -213,9 +202,7 @@ export default function ContaPanel({ open, onClose, onLogin }) {
                           p.status === "FINALIZADO" ? "bg-green-100 text-green-700"
                           : p.status === "EM ANDAMENTO" ? "bg-blue-100 text-blue-700"
                           : "bg-yellow-100 text-yellow-700"
-                        }`}>
-                          {p.status || "PENDENTE"}
-                        </span>
+                        }`}>{p.status || "PENDENTE"}</span>
                       </div>
                       <div className="mt-2 text-sm text-gray-700">
                         Total: <strong>R$ {Number(p.total).toFixed(2)}</strong>
