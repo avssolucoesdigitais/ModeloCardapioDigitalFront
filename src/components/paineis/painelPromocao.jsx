@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import uploadToCloudinary from "../../utils/uploadToCloudinary";
@@ -28,6 +28,7 @@ export default function PainelPromocao({ lojaId }) {
   const [editingIdx, setEditingIdx] = useState(null);
   const [loadingImg, setLoadingImg] = useState(false);
   const [novoProduto, setNovoProduto] = useState(FORM_INICIAL);
+  const formRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -48,6 +49,14 @@ export default function PainelPromocao({ lojaId }) {
   function resetForm() {
     setNovoProduto(FORM_INICIAL);
     setEditingIdx(null);
+  }
+
+  function handleEditar(p, idx) {
+    setNovoProduto({ ...p, preco: p.preco.toString() });
+    setEditingIdx(idx);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   }
 
   async function handleImageUpload(e) {
@@ -88,7 +97,7 @@ export default function PainelPromocao({ lojaId }) {
     <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-12 bg-white min-h-screen">
 
       {/* FORMULÁRIO */}
-      <section className="bg-gradient-to-br from-orange-500 to-red-600 rounded-[2.5rem] p-8 shadow-2xl shadow-orange-200 text-white relative overflow-hidden">
+      <section ref={formRef} className="bg-gradient-to-br from-orange-500 to-red-600 rounded-[2.5rem] p-8 shadow-2xl shadow-orange-200 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-10"><FiZap size={120} /></div>
 
         <header className="flex items-center gap-4 mb-8 relative z-10">
@@ -147,26 +156,22 @@ export default function PainelPromocao({ lojaId }) {
               onChange={(e) => set("desc", e.target.value)}
               className="w-full bg-white/20 border-none rounded-2xl px-5 py-4 text-sm font-bold placeholder:text-orange-100 focus:ring-2 focus:ring-white text-white h-20 resize-none" />
 
-            {/* Campos específicos por tipo */}
             {tipo === "combo" && (
               <input placeholder="Quantidade de itens (ex: 5)" value={novoProduto.quantidade}
                 onChange={(e) => set("quantidade", e.target.value)}
                 className="w-full bg-white/20 border-none rounded-2xl px-5 py-4 text-sm font-bold placeholder:text-orange-100 focus:ring-2 focus:ring-white text-white" />
             )}
-
             {tipo === "desconto" && (
               <input placeholder="Percentual de desconto (ex: 30)" value={novoProduto.desconto}
                 onChange={(e) => set("desconto", e.target.value)}
                 type="number" min="1" max="100"
                 className="w-full bg-white/20 border-none rounded-2xl px-5 py-4 text-sm font-bold placeholder:text-orange-100 focus:ring-2 focus:ring-white text-white" />
             )}
-
             {tipo === "brinde" && (
               <input placeholder="O que ganha de brinde? (ex: 1 refrigerante)" value={novoProduto.brinde}
                 onChange={(e) => set("brinde", e.target.value)}
                 className="w-full bg-white/20 border-none rounded-2xl px-5 py-4 text-sm font-bold placeholder:text-orange-100 focus:ring-2 focus:ring-white text-white" />
             )}
-
             {tipo === "leve_mais" && (
               <div className="grid grid-cols-2 gap-3">
                 <input placeholder="Leve (ex: 3)" value={novoProduto.leveQuantidade}
@@ -222,7 +227,6 @@ export default function PainelPromocao({ lojaId }) {
                   <h4 className="font-black text-slate-800 text-base mb-1 leading-tight">{p.nome}</h4>
                   <p className="text-[11px] text-slate-400 font-medium line-clamp-2 mb-2">{p.desc}</p>
 
-                  {/* Info específica do tipo */}
                   <div className="text-[10px] font-bold text-orange-500 mb-3">
                     {p.tipoPromo === "combo" && p.quantidade && `📦 ${p.quantidade} unidades`}
                     {p.tipoPromo === "desconto" && p.desconto && `💸 ${p.desconto}% de desconto`}
@@ -235,16 +239,25 @@ export default function PainelPromocao({ lojaId }) {
                       R$ {parsePreco(p.preco).toFixed(2).replace(".", ",")}
                     </span>
                     <div className="flex gap-1">
-                      <button onClick={() => { setNovoProduto({ ...p, preco: p.preco.toString() }); setEditingIdx(idx); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                        className="p-2 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all">
+                      <button
+                        onClick={() => handleEditar(p, idx)}
+                        className="p-2 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all"
+                        title="Editar"
+                      >
                         <FiEdit3 size={16} />
                       </button>
-                      <button onClick={() => { if (confirm("Remover oferta?")) saveDocData({ ...docData, produtos: docData.produtos.filter((_, i) => i !== idx) }); }}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                      <button
+                        onClick={() => { if (confirm("Remover oferta?")) saveDocData({ ...docData, produtos: docData.produtos.filter((_, i) => i !== idx) }); }}
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        title="Excluir"
+                      >
                         <FiTrash2 size={16} />
                       </button>
-                      <button onClick={() => { const next = { ...docData, produtos: [...docData.produtos] }; next.produtos[idx] = { ...p, available: !p.available }; saveDocData(next); }}
-                        className={`p-2 rounded-xl transition-all ${p.available ? "text-emerald-500 hover:bg-emerald-50" : "text-slate-300 hover:bg-slate-100"}`}>
+                      <button
+                        onClick={() => { const next = { ...docData, produtos: [...docData.produtos] }; next.produtos[idx] = { ...p, available: !p.available }; saveDocData(next); }}
+                        className={`p-2 rounded-xl transition-all ${p.available ? "text-emerald-500 hover:bg-emerald-50" : "text-slate-300 hover:bg-slate-100"}`}
+                        title={p.available ? "Desativar" : "Ativar"}
+                      >
                         {p.available ? <FiCheck size={16} /> : <FiX size={16} />}
                       </button>
                     </div>
