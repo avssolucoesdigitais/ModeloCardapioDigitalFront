@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import Cardapio from "./pages/Cardapio";
 import Login from "./pages/Login";
 import OpcoesCategoriaAdmin from "./pages/OpcoesCategoriaAdmin";
@@ -9,7 +10,6 @@ import LojaConfigAdmin from "./pages/LojaConfigAdmin";
 import AdminLayout from "./components/adminLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 
-// Wrapper para injetar lojaSlug como lojaId no LojaConfigAdmin
 function LojaConfigAdminWrapper() {
   const { lojaSlug } = useParams();
   return <LojaConfigAdmin lojaId={lojaSlug} />;
@@ -18,6 +18,7 @@ function LojaConfigAdminWrapper() {
 function App() {
   return (
     <Router>
+      <Toaster />
       <Routes>
         <Route path="/" element={<Navigate to="/" replace />} />
 
@@ -35,11 +36,10 @@ function App() {
 
         <Route path="/:lojaSlug/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="pedidos" replace />} />
-
-          <Route path="pedidos" element={<ProtectedRoute><OrdersAdmin /></ProtectedRoute>} />
-          <Route path="produtos" element={<ProtectedRoute><OpcoesCategoriaAdmin /></ProtectedRoute>} />
+          <Route path="pedidos"   element={<ProtectedRoute><OrdersAdmin /></ProtectedRoute>} />
+          <Route path="produtos"  element={<ProtectedRoute><OpcoesCategoriaAdmin /></ProtectedRoute>} />
           <Route path="historico" element={<ProtectedRoute><OrdersHistory /></ProtectedRoute>} />
-          <Route path="config" element={<ProtectedRoute><LojaConfigAdminWrapper /></ProtectedRoute>} />
+          <Route path="config"    element={<ProtectedRoute><LojaConfigAdminWrapper /></ProtectedRoute>} />
         </Route>
       </Routes>
     </Router>

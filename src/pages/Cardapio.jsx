@@ -81,15 +81,6 @@ export default function Cardapio() {
   const isLoadingProducts = !hasLoadedProducts;
 
   useEffect(() => {
-  if (config?.primaryColor) {
-    document.body.style.backgroundColor = config.primaryColor;
-  }
-  return () => {
-    document.body.style.backgroundColor = "";
-  };
-}, [config?.primaryColor]);
-
-  useEffect(() => {
     const ref = collection(db, "lojas", LOJA_ID, "opcoes");
     const unsubscribe = onSnapshot(ref, (snapshot) => {
       const arr = [];
@@ -144,7 +135,14 @@ export default function Cardapio() {
       .filter((p) =>
         p.available !== false &&
         (activeCategory === "Todas" || p.category === activeCategory) &&
-        (p.name || "").toLowerCase().includes(search.toLowerCase())
+        (() => {
+          const q = search.toLowerCase();
+          return (
+            (p.name || "").toLowerCase().includes(q) ||
+            (p.category || "").toLowerCase().includes(q) ||
+            (p.description || "").toLowerCase().includes(q)
+          );
+        })()
       )
       .reduce((acc, p) => {
         const group = p.category || "Outros";
@@ -219,7 +217,7 @@ export default function Cardapio() {
       {/* Barra de Categorias — sticky abaixo do header */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-6">
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-3 sm:justify-center sm:flex-wrap">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-3">
             {isLoadingProducts
               ? Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="h-9 w-20 rounded-full bg-gray-100 animate-pulse shrink-0" />
