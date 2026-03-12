@@ -1,20 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import FormProduto from "../FormProduto";
+import BotoesAcao from "../BotoesAcao";
 
 export default function PainelPizza({ lojaId }) {
+  const formRef = useRef(null);
   const [docData, setDocData] = useState({ produtos: [], bordas: [], adicionais: [] });
-  const [form, setForm] = useState({
-    name: "", description: "", image: "",
-    sizes: [], prices: {}, available: true, categoria: "",
-  });
+  const [form, setForm] = useState({ name: "", description: "", image: "", sizes: [], prices: {}, available: true, categoria: "" });
   const [editingIdx, setEditingIdx] = useState(null);
 
   useEffect(() => {
     if (!lojaId) return;
     (async () => {
-      // ✅ caminho correto
       const ref = doc(db, "lojas", lojaId, "opcoes", "Pizza");
       const snap = await getDoc(ref);
       if (snap.exists()) setDocData(snap.data());
@@ -24,6 +22,7 @@ export default function PainelPizza({ lojaId }) {
   async function saveDocData(next) {
     const ref = doc(db, "lojas", lojaId, "opcoes", "Pizza");
     await setDoc(ref, next, { merge: true });
+    setDocData(next);
   }
 
   function resetForm() {
@@ -39,11 +38,10 @@ export default function PainelPizza({ lojaId }) {
 
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-12 font-sans pb-20">
-      <FormProduto
-        form={form} setForm={setForm} resetForm={resetForm}
-        editingIdx={editingIdx} docData={docData}
-        setDocData={setDocData} saveDocData={saveDocData}
-      />
+      <div ref={formRef}>
+      <FormProduto form={form} setForm={setForm} resetForm={resetForm}
+        editingIdx={editingIdx} docData={docData} setDocData={setDocData} saveDocData={saveDocData} />
+      </div>
 
       <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
@@ -63,7 +61,7 @@ export default function PainelPizza({ lojaId }) {
                 {itens.length > 0 ? itens.map((p) => {
                   const realIdx = docData.produtos.indexOf(p);
                   return (
-                    <div key={p.id || realIdx} className={`group flex flex-col md:flex-row gap-5 p-4 rounded-2xl border transition-all ${!p.available ? "bg-gray-50 border-gray-100 opacity-60" : "bg-white border-gray-100 hover:border-indigo-200 hover:shadow-md"}`}>
+                    <div key={p.id || realIdx} className={`flex flex-col md:flex-row gap-5 p-4 rounded-2xl border transition-all ${!p.available ? "bg-gray-50 border-gray-100 opacity-60" : "bg-white border-gray-100 hover:border-indigo-200 hover:shadow-md"}`}>
                       <div className="relative shrink-0">
                         <img src={p.image || "https://via.placeholder.com/100"} alt={p.name} className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover shadow-sm" />
                         {!p.available && <span className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl text-white font-black text-xs">OFF</span>}
@@ -79,10 +77,14 @@ export default function PainelPizza({ lojaId }) {
                           ))}
                         </div>
                       </div>
-                      <div className="flex md:flex-col justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0">
-                        <button onClick={() => { setForm({ ...p, category: "Pizza" }); setEditingIdx(realIdx); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="flex-1 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100">✏️</button>
-                        <button onClick={() => { const next = { ...docData }; next.produtos[realIdx] = { ...p, available: !p.available }; saveDocData(next); setDocData(next); }} className={`flex-1 md:w-10 md:h-10 flex items-center justify-center rounded-xl transition-colors ${p.available ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>{p.available ? "✔" : "✖"}</button>
-                        <button onClick={() => { if (confirm("Excluir pizza?")) { const next = { ...docData, produtos: docData.produtos.filter((_, i) => i !== realIdx) }; saveDocData(next); setDocData(next); } }} className="flex-1 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100">🗑️</button>
+                      <div className="flex md:flex-col justify-end items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0">
+                        <BotoesAcao
+                formRef={formRef}
+                          disponivel={p.available}
+                          onEditar={() => { setForm({ ...p, category: "Pizza" }); setEditingIdx(realIdx); }}
+                          onToggle={() => { const next = { ...docData }; next.produtos[realIdx] = { ...p, available: !p.available }; saveDocData(next); setDocData(next); }}
+                          onExcluir={() => { if (confirm("Excluir pizza?")) { const next = { ...docData, produtos: docData.produtos.filter((_, i) => i !== realIdx) }; saveDocData(next); setDocData(next); } }}
+                        />
                       </div>
                     </div>
                   );
@@ -103,7 +105,7 @@ export default function PainelPizza({ lojaId }) {
   );
 }
 
-function SimpleItemSection({ title, items, onChange, color }) {
+function SimpleItemSection({ title, items = [], onChange, color }) {
   const [novo, setNovo] = useState({ nome: "", preco: "" });
 
   function addItem() {
@@ -133,11 +135,13 @@ function SimpleItemSection({ title, items, onChange, color }) {
           {items.length === 0 && <p className="text-center py-6 text-xs text-gray-400 italic">Lista vazia</p>}
         </div>
         <div className="flex flex-col gap-2 pt-4 border-t border-gray-100">
-          <input placeholder="Nome (ex: Catupiry)" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} className="w-full h-11 border-2 border-gray-50 rounded-xl px-4 bg-gray-50 focus:bg-white focus:border-gray-200 outline-none text-sm font-medium" />
+          <input placeholder="Nome (ex: Catupiry)" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
+            className="w-full h-11 border-2 border-gray-50 rounded-xl px-4 bg-gray-50 focus:bg-white focus:border-gray-200 outline-none text-sm font-medium" />
           <div className="flex gap-2">
             <div className="relative flex-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-              <input placeholder="0,00" value={novo.preco} onChange={(e) => setNovo({ ...novo, preco: e.target.value.replace(/[^\d.,]/g, "") })} className="w-full h-11 border-2 border-gray-50 rounded-xl pl-8 pr-4 bg-gray-50 focus:bg-white focus:border-gray-200 outline-none text-sm font-bold" />
+              <input placeholder="0,00" value={novo.preco} onChange={(e) => setNovo({ ...novo, preco: e.target.value.replace(/[^\d.,]/g, "") })}
+                className="w-full h-11 border-2 border-gray-50 rounded-xl pl-8 pr-4 bg-gray-50 focus:bg-white focus:border-gray-200 outline-none text-sm font-bold" />
             </div>
             <button onClick={addItem} className="px-6 bg-gray-900 text-white rounded-xl font-black text-sm hover:bg-gray-800 active:scale-95 transition-all shadow-lg shadow-gray-200">ADC</button>
           </div>
