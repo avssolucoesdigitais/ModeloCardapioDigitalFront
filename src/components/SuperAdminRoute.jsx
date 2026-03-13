@@ -1,8 +1,15 @@
 import { Navigate, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
-// lojaSlug agora vem como prop — não depende de useParams()
-export default function ProtectedRoute({ children, lojaSlug }) {
+const SUPER_ADMIN_UID = "RBVQr2GnvubTbUv7UWqjdQ0nUD43";
+
+/**
+ * SuperAdminRoute — protege a rota /superadmin.
+ * Se não autenticado       → redireciona para /superadmin/login
+ * Se autenticado mas não é superadmin → redireciona para /superadmin/login
+ * Enquanto carrega → spinner
+ */
+export default function SuperAdminRoute({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -17,8 +24,8 @@ export default function ProtectedRoute({ children, lojaSlug }) {
     );
   }
 
-  if (!user) {
-    return <Navigate to={`/${lojaSlug}/login`} state={{ from: location }} replace />;
+  if (!user || user.uid !== SUPER_ADMIN_UID) {
+    return <Navigate to="/superadmin/login" state={{ from: location }} replace />;
   }
 
   return children;

@@ -6,13 +6,25 @@ import OpcoesCategoriaAdmin from "./pages/OpcoesCategoriaAdmin";
 import OrdersAdmin from "./pages/OrdersAdmin";
 import OrdersHistory from "./pages/OrdersHistory";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SuperAdminRoute from "./components/SuperAdminRoute";
 import LojaConfigAdmin from "./pages/LojaConfigAdmin";
 import AdminLayout from "./components/adminLayout";
 import SuperAdmin from "./pages/SuperAdmin";
+import SuperAdminLogin from "./pages/SuperAdminLogin";
 
 function LojaConfigAdminWrapper() {
   const { lojaSlug } = useParams();
   return <LojaConfigAdmin lojaId={lojaSlug} />;
+}
+
+// Wrapper que lê o lojaSlug e passa pro ProtectedRoute como prop
+function AdminProtected() {
+  const { lojaSlug } = useParams();
+  return (
+    <ProtectedRoute lojaSlug={lojaSlug}>
+      <AdminLayout />
+    </ProtectedRoute>
+  );
 }
 
 function App() {
@@ -20,27 +32,33 @@ function App() {
     <Router>
       <Toaster />
       <Routes>
+
         <Route path="/" element={<Navigate to="/" replace />} />
 
-        <Route path="/superadmin" element={<SuperAdmin />} />
-
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="/admin" element={<Navigate to="/" replace />} />
-        <Route path="/admin/pedidos" element={<Navigate to="/" replace />} />
-        <Route path="/admin/produtos" element={<Navigate to="/" replace />} />
+        <Route path="/login"           element={<Navigate to="/" replace />} />
+        <Route path="/admin"           element={<Navigate to="/" replace />} />
+        <Route path="/admin/pedidos"   element={<Navigate to="/" replace />} />
+        <Route path="/admin/produtos"  element={<Navigate to="/" replace />} />
         <Route path="/admin/historico" element={<Navigate to="/" replace />} />
-        <Route path="/admin/config" element={<Navigate to="/" replace />} />
+        <Route path="/admin/config"    element={<Navigate to="/" replace />} />
+
+        <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+        <Route path="/superadmin" element={
+          <SuperAdminRoute><SuperAdmin /></SuperAdminRoute>
+        } />
 
         <Route path="/:lojaSlug" element={<Cardapio />} />
         <Route path="/:lojaSlug/login" element={<Login />} />
 
-        <Route path="/:lojaSlug/admin" element={<AdminLayout />}>
+        {/* AdminProtected lê o lojaSlug via useParams dentro da rota correta */}
+        <Route path="/:lojaSlug/admin" element={<AdminProtected />}>
           <Route index element={<Navigate to="pedidos" replace />} />
-          <Route path="pedidos"   element={<ProtectedRoute><OrdersAdmin /></ProtectedRoute>} />
-          <Route path="produtos"  element={<ProtectedRoute><OpcoesCategoriaAdmin /></ProtectedRoute>} />
-          <Route path="historico" element={<ProtectedRoute><OrdersHistory /></ProtectedRoute>} />
-          <Route path="config"    element={<ProtectedRoute><LojaConfigAdminWrapper /></ProtectedRoute>} />
+          <Route path="pedidos"   element={<OrdersAdmin />} />
+          <Route path="produtos"  element={<OpcoesCategoriaAdmin />} />
+          <Route path="historico" element={<OrdersHistory />} />
+          <Route path="config"    element={<LojaConfigAdminWrapper />} />
         </Route>
+
       </Routes>
     </Router>
   );

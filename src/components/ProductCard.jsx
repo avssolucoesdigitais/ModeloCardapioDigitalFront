@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { FaPlus } from "react-icons/fa";
 import { motion } from "framer-motion";
 import PromoModal from "./PromoModal";
+import SizeModal from "./SizeModal";
 
 const MotionDiv = motion.div;
 
@@ -11,16 +12,13 @@ const parsePreco = (valor) => {
   return parseFloat(normalized) || 0;
 };
 
-const formatPreco = (valor) => {
-  return parsePreco(valor).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-};
+const formatPreco = (valor) =>
+  parsePreco(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function ProductCard({ p, onAdd, disabled }) {
   const [selectedSize, setSelectedSize] = useState("");
   const [promoOpen, setPromoOpen] = useState(false);
+  const [sizeOpen, setSizeOpen] = useState(false);
 
   const sizes = useMemo(() => {
     if (!p.prices) return [];
@@ -29,6 +27,7 @@ export default function ProductCard({ p, onAdd, disabled }) {
 
   const category = (p.category || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const isPromo = category === "promocao" || category === "promoção";
+  const hasMultipleSizes = sizes.length > 1;
 
   const { displayPrice, isStartingPrice } = useMemo(() => {
     if (category === "pizza" && p.montar) return { displayPrice: "Monte a sua", isStartingPrice: false };
@@ -42,12 +41,30 @@ export default function ProductCard({ p, onAdd, disabled }) {
 
   const handleAdd = () => {
     if (disabled) return;
+
+    // Promoções abrem PromoModal
     if (isPromo) { setPromoOpen(true); return; }
+
+    // Produtos com múltiplos tamanhos sem seleção → abre SizeModal
+    if (hasMultipleSizes && !selectedSize) { setSizeOpen(true); return; }
+
+    // Tamanho único ou já selecionado → adiciona direto
+    const size = selectedSize || (sizes.length === 1 ? sizes[0][0] : "único");
+    const price = sizes.length > 0
+      ? parsePreco(p.prices[size])
+      : parsePreco(p.preco || p.price);
+
     onAdd({
       id: p.id, name: p.name, category: p.category, description: p.description,
-      price: parsePreco(selectedSize ? p.prices[selectedSize] : (p.preco || p.price)),
-      size: selectedSize || (sizes.length === 1 ? Object.keys(p.prices)[0] : "único"),
-      image: p.image, qty: 1, firstFlavorId: p.id,
+      price, size, image: p.image, qty: 1, firstFlavorId: p.id,
+    });
+  };
+
+  const handleSizeConfirm = (size, price) => {
+    setSelectedSize(size);
+    onAdd({
+      id: p.id, name: p.name, category: p.category, description: p.description,
+      price, size, image: p.image, qty: 1, firstFlavorId: p.id,
     });
   };
 
@@ -86,12 +103,16 @@ export default function ProductCard({ p, onAdd, disabled }) {
           <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-1">{p.name}</h3>
           <p className="text-gray-400 text-[11px] line-clamp-2 min-h-[28px]">{p.description || ""}</p>
 
-          {sizes.length > 1 && !isPromo && category !== "pizza" && (
+          {/* Pills de tamanho */}
+          {hasMultipleSizes && !isPromo && category !== "pizza" && (
             <div className="flex gap-1 mt-1 overflow-x-auto scrollbar-hide pb-0.5">
               {sizes.map(([size]) => (
-                <button key={size} onClick={(e) => { e.stopPropagation(); setSelectedSize(size); }}
+                <button key={size}
+                  onClick={(e) => { e.stopPropagation(); setSelectedSize(size); }}
                   className={`whitespace-nowrap px-2 py-0.5 rounded-full text-[9px] font-bold transition-all shrink-0 ${
-                    selectedSize === size ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                    selectedSize === size
+                      ? "bg-gray-900 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
                   }`}>
                   {size.toUpperCase()}
                 </button>
@@ -114,8 +135,9 @@ export default function ProductCard({ p, onAdd, disabled }) {
               onClick={(e) => { e.stopPropagation(); handleAdd(); }}
               disabled={disabled}
               className={`flex items-center justify-center h-9 w-9 rounded-xl shrink-0 transition-all ${
-                disabled ? "bg-gray-100 text-gray-300 cursor-not-allowed"
-                : "bg-gray-900 text-white hover:bg-green-600 shadow-md"
+                disabled
+                  ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                  : "bg-gray-900 text-white hover:bg-green-600 shadow-md"
               }`}
             >
               <FaPlus size={13} />
@@ -130,6 +152,13 @@ export default function ProductCard({ p, onAdd, disabled }) {
         produto={p}
         onAdd={onAdd}
         disabled={disabled}
+      />
+
+      <SizeModal
+        open={sizeOpen}
+        onClose={() => setSizeOpen(false)}
+        produto={p}
+        onConfirm={handleSizeConfirm}
       />
     </>
   );
