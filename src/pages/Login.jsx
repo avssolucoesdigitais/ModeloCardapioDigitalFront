@@ -8,19 +8,19 @@ import logo from "../assets/logo.icon.png";
 import { motion } from "framer-motion";
 import { FaInstagram, FaLinkedin, FaWhatsapp, FaEnvelope, FaLock } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
+import { registrarSessao } from "../hooks/useAuth";
 
 const SUPER_ADMIN_UID = "RBVQr2GnvubTbUv7UWqjdQ0nUD43";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState("");
+  const [email, setEmail]   = useState("");
+  const [senha, setSenha]   = useState("");
+  const [erro, setErro]     = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate  = useNavigate();
+  const location  = useLocation();
   const { lojaSlug } = useParams();
 
-  // Rota de destino após login (passada pelo ProtectedRoute via state)
   const destino = location.state?.from?.pathname;
 
   const handleLogin = async (e) => {
@@ -30,6 +30,9 @@ export default function Login() {
 
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, senha);
+
+      // Registra o início da sessão imediatamente após login bem-sucedido
+      registrarSessao();
 
       // Superadmin → vai para /superadmin ou destino original
       if (user.uid === SUPER_ADMIN_UID) {
@@ -41,7 +44,6 @@ export default function Login() {
       const snap = await getDoc(doc(db, "admin", user.uid));
       if (snap.exists() && snap.data().role === "admin") {
         const lojaId = snap.data().lojaId || lojaSlug;
-        // Redireciona para a rota que tentou acessar, ou para pedidos
         navigate(destino || `/${lojaId}/admin/pedidos`, { replace: true });
       } else {
         setErro("⚠️ Você não tem permissão de administrador.");

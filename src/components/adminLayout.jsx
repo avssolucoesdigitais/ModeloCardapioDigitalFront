@@ -2,19 +2,20 @@ import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut } from "react-icons/fi";
+import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut, FiGrid } from "react-icons/fi";
 import { FaPizzaSlice, FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
 import logo from "../assets/logo.icon.png";
 
 export default function AdminLayout() {
   const location = useLocation();
-  const { lojaSlug } = useParams(); // ✅ pega o slug da URL
+  const { lojaSlug } = useParams();
   const auth = getAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const menuItems = [
     { path: `/${lojaSlug}/admin/pedidos`,   label: "Pedidos",       icon: <FiBox size={20} /> },
     { path: `/${lojaSlug}/admin/produtos`,  label: "Produtos",      icon: <FaPizzaSlice size={18} /> },
+    { path: `/${lojaSlug}/admin/paineis`,   label: "Painéis",       icon: <FiGrid size={20} /> },
     { path: `/${lojaSlug}/admin/historico`, label: "Histórico",     icon: <FiClock size={20} /> },
     { path: `/${lojaSlug}/admin/config`,    label: "Configuração",  icon: <FiSettings size={20} /> },
   ];
@@ -23,7 +24,7 @@ export default function AdminLayout() {
     if (window.confirm("Deseja realmente sair?")) {
       try {
         await signOut(auth);
-        window.location.href = `/${lojaSlug}/login`; // ✅ redireciona para login da loja
+        window.location.href = `/${lojaSlug}/login`;
       } catch (err) { console.error(err); }
     }
   };

@@ -11,10 +11,16 @@ import LojaConfigAdmin from "./pages/LojaConfigAdmin";
 import AdminLayout from "./components/adminLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
+import GerenciadorPaineis from "./pages/GerenciadorPaineis";
 
 function LojaConfigAdminWrapper() {
   const { lojaSlug } = useParams();
   return <LojaConfigAdmin lojaId={lojaSlug} />;
+}
+
+function GerenciadorPaineisWrapper() {
+  const { lojaSlug } = useParams();
+  return <GerenciadorPaineis lojaId={lojaSlug} />;
 }
 
 // Wrapper que lê o lojaSlug e passa pro ProtectedRoute como prop
@@ -50,13 +56,13 @@ function App() {
         <Route path="/:lojaSlug" element={<Cardapio />} />
         <Route path="/:lojaSlug/login" element={<Login />} />
 
-        {/* AdminProtected lê o lojaSlug via useParams dentro da rota correta */}
         <Route path="/:lojaSlug/admin" element={<AdminProtected />}>
           <Route index element={<Navigate to="pedidos" replace />} />
           <Route path="pedidos"   element={<OrdersAdmin />} />
           <Route path="produtos"  element={<OpcoesCategoriaAdmin />} />
           <Route path="historico" element={<OrdersHistory />} />
           <Route path="config"    element={<LojaConfigAdminWrapper />} />
+          <Route path="paineis"   element={<GerenciadorPaineisWrapper />} />
         </Route>
 
       </Routes>
