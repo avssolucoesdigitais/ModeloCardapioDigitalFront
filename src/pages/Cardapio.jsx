@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { db } from "../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, getDocs } from "firebase/firestore";
 import useCart from "../hooks/useCart";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -19,22 +19,6 @@ import PizzaBuilderModal from "../components/BuiderModal/PizzaBuilderModal";
 import PastelBuilderModal from "../components/BuiderModal/PastelBuilderModal.jsx";
 
 const DIA_KEYS = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
-
-const ALL_CATEGORIES = [
-  { name: "Promoção", icon: <MdLocalOffer /> },
-  { name: "Pizza", icon: "🍕" },
-  { name: "Hamburguer", icon: "🍔" },
-  { name: "Pastel", icon: "🥟" },
-  { name: "HotDog", icon: "🌭" },
-  { name: "Marmitas", icon: "🍱" },
-  { name: "Bebida", icon: "🥤" },
-  { name: "Batata", icon: "🍟" },
-  { name: "Salgadinhos", icon: "🍢" },
-  { name: "Esfiha", icon: "🫓" },
-  { name: "Calzone", icon: "🌮" },
-  { name: "Combos", icon: "🎁" },
-];
-
 const BANNER_HEIGHT_CLASSES = "h-40 sm:h-56 md:h-72 lg:h-80";
 
 function normalizeCategory(cat) {
@@ -63,23 +47,37 @@ export default function Cardapio() {
   const cart = useCart();
   const { config } = useLojaConfig(LOJA_ID);
 
-  const [products, setProducts] = useState([]);
+  const [products, setProducts]               = useState([]);
   const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("Todas");
-  const [lojaAberta, setLojaAberta] = useState(true);
+  const [paineis, setPaineis]                 = useState([]);  // ← novo
+  const [search, setSearch]                   = useState("");
+  const [open, setOpen]                       = useState(false);
+  const [checkoutOpen, setCheckoutOpen]       = useState(false);
+  const [activeCategory, setActiveCategory]   = useState("Todas");
+  const [lojaAberta, setLojaAberta]           = useState(true);
   const [horarioModalOpen, setHorarioModalOpen] = useState(false);
-  const [pizzaOpen, setPizzaOpen] = useState(false);
-  const [basePizza, setBasePizza] = useState(null);
-  const [pizzaPreset, setPizzaPreset] = useState(null);
-  const [pastelOpen, setPastelOpen] = useState(false);
-  const [basePastel, setBasePastel] = useState(null);
-  const [pastelPreset, setPastelPreset] = useState(null);
+  const [pizzaOpen, setPizzaOpen]             = useState(false);
+  const [basePizza, setBasePizza]             = useState(null);
+  const [pizzaPreset, setPizzaPreset]         = useState(null);
+  const [pastelOpen, setPastelOpen]           = useState(false);
+  const [basePastel, setBasePastel]           = useState(null);
+  const [pastelPreset, setPastelPreset]       = useState(null);
 
   const isLoadingProducts = !hasLoadedProducts;
 
+  // ── Carrega painéis ativos para montar as categorias do filtro ──
+  useEffect(() => {
+    if (!LOJA_ID) return;
+    getDocs(collection(db, "lojas", LOJA_ID, "paineis")).then((snap) => {
+      const lista = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((p) => p.ativo !== false)
+        .sort((a, b) => (a.ordem ?? 99) - (b.ordem ?? 99));
+      setPaineis(lista);
+    });
+  }, [LOJA_ID]);
+
+  // ── Escuta produtos em tempo real de todas as opcoes/ ──
   useEffect(() => {
     const ref = collection(db, "lojas", LOJA_ID, "opcoes");
     const unsubscribe = onSnapshot(ref, (snapshot) => {
@@ -107,8 +105,9 @@ export default function Cardapio() {
       setHasLoadedProducts(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [LOJA_ID]);
 
+  // ── Atualiza status da loja a cada minuto ──
   useEffect(() => {
     if (!config || !config.horarios) { setLojaAberta(false); return; }
     function atualizarStatus() { setLojaAberta(isLojaAberta(config)); }
@@ -117,18 +116,30 @@ export default function Cardapio() {
     return () => clearInterval(id);
   }, [config]);
 
-  const availableCategories = useMemo(() => {
-    if (!products.length) return [];
-    return ALL_CATEGORIES.filter((cat) =>
-      products.some((p) => p.category === cat.name && p.available !== false)
-    );
-  }, [products]);
-
+  // ── Monta categorias do filtro a partir dos painéis do Firestore ──
+  // Usa opcaoId do painel para bater com product.category (que vem do id do doc em opcoes/)
   const categories = useMemo(() => {
-    if (!products.length) return [];
-    return [{ name: "Todas", icon: <GiFullPizza /> }, ...availableCategories];
-  }, [availableCategories, products.length]);
+    if (!products.length || !paineis.length) return [];
 
+    const categoriasTodas = { name: "Todas", icon: <GiFullPizza /> };
+
+    const dinamicas = paineis
+      .filter((painel) =>
+        // só exibe no filtro se houver ao menos 1 produto disponível nessa categoria
+        products.some(
+          (p) => p.category === painel.opcaoId && p.available !== false
+        )
+      )
+      .map((painel) => ({
+        name: painel.opcaoId,   // bate com product.category
+        label: painel.nome,     // nome legível exibido no botão
+        icon: painel.icone,
+      }));
+
+    return [categoriasTodas, ...dinamicas];
+  }, [products, paineis]);
+
+  // ── Filtra e agrupa produtos ──
   const groupedProducts = useMemo(() => {
     if (!products.length) return {};
     return products
@@ -152,14 +163,33 @@ export default function Cardapio() {
       }, {});
   }, [products, activeCategory, search]);
 
+  // ── Ordena grupos respeitando a ordem dos painéis ──
   const orderedGroups = useMemo(() => {
+    const ordemPaineis = paineis.map((p) => p.opcaoId);
     return Object.entries(groupedProducts).sort(([a], [b]) => {
-      if (a.toLowerCase() === "promocao" || a.toLowerCase() === "promoção") return -1;
-      if (b.toLowerCase() === "promocao" || b.toLowerCase() === "promoção") return 1;
-      return 0;
+      // Promoção sempre primeiro
+      const aNorm = normalizeCategory(a);
+      const bNorm = normalizeCategory(b);
+      if (aNorm === "promocao") return -1;
+      if (bNorm === "promocao") return 1;
+      // Demais seguem a ordem dos painéis
+      const ia = ordemPaineis.indexOf(a);
+      const ib = ordemPaineis.indexOf(b);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
     });
-  }, [groupedProducts]);
+  }, [groupedProducts, paineis]);
 
+  // ── Retorna label legível de uma categoria ──
+  function getCategoryLabel(categoryId) {
+    if (categoryId === "Promocao" || categoryId === "Promoção") return "Promoção";
+    const painel = paineis.find((p) => p.opcaoId === categoryId);
+    return painel?.nome ?? categoryId;
+  }
+
+  // ── Handlers de produto ──
   const makeOnAdd = useCallback((p) => (itemFromCard) => {
     if (!lojaAberta) { setHorarioModalOpen(true); return; }
     const catNorm = normalizeCategory(p.category);
@@ -170,7 +200,7 @@ export default function Cardapio() {
       return;
     }
     if (catNorm === "pastel") {
-      const hasSizes = p.prices && Object.keys(p.prices).length > 0;
+      const hasSizes  = p.prices && Object.keys(p.prices).length > 0;
       const hasAddons = p.adicionais && p.adicionais.length > 0;
       if (p.montar === true || hasSizes || hasAddons) {
         setBasePastel(p);
@@ -178,9 +208,11 @@ export default function Cardapio() {
         setPastelOpen(true);
         return;
       }
-      cart.add({ id: p.id, name: p.name, category: p.category, description: p.description,
+      cart.add({
+        id: p.id, name: p.name, category: p.category, description: p.description,
         price: itemFromCard?.price ?? p.preco ?? p.price ?? (p.prices ? Object.values(p.prices)[0] : 0),
-        size: itemFromCard?.size || "único", image: p.image, qty: itemFromCard?.qty ?? 1 });
+        size: itemFromCard?.size || "único", image: p.image, qty: itemFromCard?.qty ?? 1,
+      });
       return;
     }
     cart.add({ ...itemFromCard, qty: itemFromCard?.qty ?? 1 });
@@ -206,7 +238,7 @@ export default function Cardapio() {
         )}
       </div>
 
-      {/* Status + Horário — fora do sticky */}
+      {/* Status + Horário */}
       <div className="w-full px-3 sm:px-6 pt-5 pb-3">
         <HorarioFuncionamento lojaId={LOJA_ID} />
         <p className={`mt-2 text-sm text-center font-semibold ${lojaAberta ? "text-green-600" : "text-red-500"}`}>
@@ -214,7 +246,7 @@ export default function Cardapio() {
         </p>
       </div>
 
-      {/* Barra de Categorias — sticky abaixo do header */}
+      {/* Barra de Categorias — sticky */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-6">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-3">
@@ -235,7 +267,8 @@ export default function Cardapio() {
                       }`}
                     >
                       <span className="text-sm">{cat.icon}</span>
-                      <span>{cat.name}</span>
+                      {/* Usa label quando disponível (nome legível do painel) */}
+                      <span>{cat.label ?? cat.name}</span>
                       {isActive && (
                         <motion.span
                           layoutId="categoryUnderline"
@@ -249,6 +282,7 @@ export default function Cardapio() {
         </div>
       </div>
 
+      {/* Produtos */}
       <main className="flex-1 w-full px-3 sm:px-6 py-8">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-7xl space-y-10">
@@ -266,7 +300,7 @@ export default function Cardapio() {
                 <div key={group}>
                   <h2 className="flex items-center gap-3 text-xl sm:text-2xl font-extrabold text-gray-900 mb-5">
                     <span className="w-1 h-6 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
-                    <span>{group === "Promocao" ? "Promoção" : group}</span>
+                    <span>{getCategoryLabel(group)}</span>
                   </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                     {items.map((p, idx) => (
@@ -287,10 +321,12 @@ export default function Cardapio() {
 
       <CartPanel open={open} onClose={() => setOpen(false)} cart={cart} onCheckout={handleCheckout} />
       <CheckoutModal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} cart={cart} whatsapp={config?.whatsapp} lojaId={LOJA_ID} />
-      <PizzaBuilderModal open={pizzaOpen} onClose={() => { setPizzaOpen(false); setBasePizza(null); setPizzaPreset(null); }}
+      <PizzaBuilderModal open={pizzaOpen}
+        onClose={() => { setPizzaOpen(false); setBasePizza(null); setPizzaPreset(null); }}
         products={products} baseProduct={basePizza} preset={pizzaPreset}
         onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })} />
-      <PastelBuilderModal open={pastelOpen} onClose={() => { setPastelOpen(false); setBasePastel(null); setPastelPreset(null); }}
+      <PastelBuilderModal open={pastelOpen}
+        onClose={() => { setPastelOpen(false); setBasePastel(null); setPastelPreset(null); }}
         baseProduct={basePastel} preset={pastelPreset}
         onAdd={(item) => cart.add({ ...item, qty: item.qty ?? 1 })} />
 
