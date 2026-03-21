@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut, FiGrid } from "react-icons/fi";
 import { FaPizzaSlice, FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
 import logo from "../assets/logo.icon.png";
+import { FiBarChart2 } from "react-icons/fi";
 
 export default function AdminLayout() {
   const location = useLocation();
@@ -16,7 +17,7 @@ export default function AdminLayout() {
     { path: `/${lojaSlug}/admin/pedidos`,   label: "Pedidos",       icon: <FiBox size={20} /> },
     { path: `/${lojaSlug}/admin/produtos`,  label: "Produtos",      icon: <FaPizzaSlice size={18} /> },
     { path: `/${lojaSlug}/admin/paineis`,   label: "Painéis",       icon: <FiGrid size={20} /> },
-    { path: `/${lojaSlug}/admin/historico`, label: "Histórico",     icon: <FiClock size={20} /> },
+    { path: `/${lojaSlug}/admin/crm`,       label: "CRM",           icon: <FiBarChart2 size={20} /> },
     { path: `/${lojaSlug}/admin/config`,    label: "Configuração",  icon: <FiSettings size={20} /> },
   ];
 
@@ -118,7 +119,7 @@ export default function AdminLayout() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 px-8 items-center justify-between hidden md:flex">
           <span className="text-slate-400 font-medium">
-            Painel Administrativo &gt; <span className="text-slate-900 font-bold capitalize">{location.pathname.split('/').pop()}</span>
+            Painel Administrativo &gt; <span className="text-slate-900 font-bold">{location.pathname.split('/').pop()}</span>
           </span>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>

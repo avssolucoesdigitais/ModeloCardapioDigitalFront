@@ -4,7 +4,6 @@ import Cardapio from "./pages/Cardapio";
 import Login from "./pages/Login";
 import OpcoesCategoriaAdmin from "./pages/OpcoesCategoriaAdmin";
 import OrdersAdmin from "./pages/OrdersAdmin";
-import OrdersHistory from "./pages/OrdersHistory";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SuperAdminRoute from "./components/SuperAdminRoute";
 import LojaConfigAdmin from "./pages/LojaConfigAdmin";
@@ -12,6 +11,7 @@ import AdminLayout from "./components/adminLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
 import GerenciadorPaineis from "./pages/GerenciadorPaineis";
+import CrmAdmin from "./pages/CrmAdmin";
 
 function LojaConfigAdminWrapper() {
   const { lojaSlug } = useParams();
@@ -21,6 +21,11 @@ function LojaConfigAdminWrapper() {
 function GerenciadorPaineisWrapper() {
   const { lojaSlug } = useParams();
   return <GerenciadorPaineis lojaId={lojaSlug} />;
+}
+
+function CrmAdminWrapper() {
+  const { lojaSlug } = useParams();
+  return <CrmAdmin lojaId={lojaSlug} />;
 }
 
 // Wrapper que lê o lojaSlug e passa pro ProtectedRoute como prop
@@ -45,7 +50,6 @@ function App() {
         <Route path="/admin"           element={<Navigate to="/" replace />} />
         <Route path="/admin/pedidos"   element={<Navigate to="/" replace />} />
         <Route path="/admin/produtos"  element={<Navigate to="/" replace />} />
-        <Route path="/admin/historico" element={<Navigate to="/" replace />} />
         <Route path="/admin/config"    element={<Navigate to="/" replace />} />
 
         <Route path="/superadmin/login" element={<SuperAdminLogin />} />
@@ -60,9 +64,9 @@ function App() {
           <Route index element={<Navigate to="pedidos" replace />} />
           <Route path="pedidos"   element={<OrdersAdmin />} />
           <Route path="produtos"  element={<OpcoesCategoriaAdmin />} />
-          <Route path="historico" element={<OrdersHistory />} />
           <Route path="config"    element={<LojaConfigAdminWrapper />} />
           <Route path="paineis"   element={<GerenciadorPaineisWrapper />} />
+          <Route path="crm"       element={<CrmAdminWrapper />} />
         </Route>
 
       </Routes>
