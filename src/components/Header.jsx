@@ -93,7 +93,6 @@ export default function Header({ onCartClick, cartCount = 0, onSearchChange, con
               )}
             </AnimatePresence>
           </button>
-
           {/* Menu mobile */}
           <button
             className="md:hidden p-2.5 rounded-2xl bg-white/10"
