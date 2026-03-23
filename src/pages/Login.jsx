@@ -10,7 +10,7 @@ import { FaInstagram, FaLinkedin, FaWhatsapp, FaEnvelope, FaLock } from "react-i
 import { Loader2 } from "lucide-react";
 import { registrarSessao } from "../hooks/useAuth";
 
-const SUPER_ADMIN_UID = "RBVQr2GnvubTbUv7UWqjdQ0nUD43";
+const SUPER_ADMIN_UID = import.meta.env.VITE_SUPER_ADMIN_UID;
 
 export default function Login() {
   const [email, setEmail]   = useState("");

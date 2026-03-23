@@ -2,6 +2,7 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
+import { registrarSessao } from "../hooks/useAuth";
 import { ShieldCheck } from "lucide-react";
 
 export default function SuperAdminLogin() {
@@ -20,6 +21,7 @@ export default function SuperAdminLogin() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, senha);
+      registrarSessao();
       navigate(destino, { replace: true });
     } catch {
       setErro("E-mail ou senha incorretos.");
