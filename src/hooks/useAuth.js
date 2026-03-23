@@ -3,7 +3,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-const SUPER_ADMIN_UID = import.meta.env.SUPER_ADMIN_UID;
+const SUPER_ADMIN_UID = import.meta.env.VITE_SUPER_ADMIN_UID;
 
 // Tempo máximo de sessão: 8 horas (em milissegundos)
 // Ajuste conforme necessário:
