@@ -65,9 +65,8 @@ export default function Login() {
         </div>
         <div className="flex items-center gap-6">
           <div className="flex gap-4 text-gray-400">
-            <a href="#" className="hover:text-pink-500 transition-colors"><FaInstagram size={20} /></a>
-            <a href="#" className="hover:text-blue-600 transition-colors"><FaLinkedin size={20} /></a>
-            <a href="#" className="hover:text-green-500 transition-colors"><FaWhatsapp size={20} /></a>
+            <a href="https://wa.me/5585921926083" target="_blank" rel="noreferrer" className="hover:text-pink-500 transition-colors"><FaInstagram size={20} /></a>
+            <a href="https://www.instagram.com/avs_avantesoftware/" target="_blank" rel="noreferrer" className="hover:text-green-500 transition-colors"><FaWhatsapp size={20} /></a>
           </div>
         </div>
       </header>

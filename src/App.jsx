@@ -12,6 +12,7 @@ import SuperAdmin from "./pages/SuperAdmin";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
 import GerenciadorPaineis from "./pages/GerenciadorPaineis";
 import CrmAdmin from "./pages/CrmAdmin";
+import LandingPage from "./pages/LandingPage";
 
 function LojaConfigAdminWrapper() {
   const { lojaSlug } = useParams();
@@ -44,7 +45,7 @@ function App() {
       <Toaster />
       <Routes>
 
-        <Route path="/" element={<Navigate to="/" replace />} />
+        <Route path="/" element={<LandingPage />} />
 
         <Route path="/login"           element={<Navigate to="/" replace />} />
         <Route path="/admin"           element={<Navigate to="/" replace />} />
