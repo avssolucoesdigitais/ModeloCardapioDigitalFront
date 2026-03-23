@@ -96,14 +96,11 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex justify-around mb-4">
-            <a href="https://wa.me/5588981356668" target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg hover:text-green-400 transition-colors">
+            <a href="https://wa.me/5585921926083" target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg hover:text-green-400 transition-colors">
               <FaWhatsapp size={16}/>
             </a>
             <a href="#" className="p-2 bg-slate-800 rounded-lg hover:text-pink-400 transition-colors">
               <FaInstagram size={16}/>
-            </a>
-            <a href="#" className="p-2 bg-slate-800 rounded-lg hover:text-blue-400 transition-colors">
-              <FaLinkedin size={16}/>
             </a>
           </div>
 
