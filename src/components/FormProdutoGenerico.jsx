@@ -4,10 +4,20 @@
  * Formulário genérico de produto.
  * Campos fixos: nome, descrição, imagem, preço/sizes, categoria, available.
  * Campos extras: renderizados dinamicamente via config.camposExtras[].
+ *
+ * Tipos de campo suportados:
+ *   text        → <input type="text">
+ *   number      → <input type="number">
+ *   select      → <select> com opções fixas
+ *   toggle      → switch booleano
+ *   multiselect → chips clicáveis, salva array no produto  ← NOVO
+ *   extras-ref  → seleciona itens de uma SecaoExtras existente ← NOVO
  */
 
 import { useRef } from "react";
+import { useState } from "react";
 import uploadToCloudinary from "../utils/uploadToCloudinary";
+import MultiSelectField from "./MultiSelectField";
 
 export default function FormProdutoGenerico({
   config,
@@ -18,6 +28,8 @@ export default function FormProdutoGenerico({
   onCancelar,
   loadingImg,
   setLoadingImg,
+  // docData é necessário apenas para campos do tipo "extras-ref"
+  docData,
 }) {
   const inputFileRef = useRef(null);
 
@@ -35,21 +47,20 @@ export default function FormProdutoGenerico({
     }
   }
 
-  function handleSizeToggle(size) {
-    const sizes = produto.sizes ?? [];
-    const prices = produto.prices ?? {};
-    if (sizes.includes(size)) {
-      const novosSizes = sizes.filter((s) => s !== size);
-      const novosPrecos = { ...prices };
-      delete novosPrecos[size];
-      setProduto({ ...produto, sizes: novosSizes, prices: novosPrecos });
-    } else {
-      setProduto({ ...produto, sizes: [...sizes, size], prices: { ...prices, [size]: "" } });
-    }
-  }
-
   const isEditing = editingIdx !== null;
   const nome = produto.nome || produto.name || "";
+
+  // Separa campos por coluna para layout grid
+  const camposEsquerda = config?.camposExtras?.filter(
+    (c) => c.tipo === "text" || c.tipo === "number"
+  ) ?? [];
+  const camposDireita = config?.camposExtras?.filter(
+    (c) => c.tipo === "select" || c.tipo === "toggle"
+  ) ?? [];
+  // Campos de largura total (multiselect e extras-ref ficam abaixo do grid)
+  const camposLarguraTotal = config?.camposExtras?.filter(
+    (c) => c.tipo === "multiselect" || c.tipo === "extras-ref"
+  ) ?? [];
 
   return (
     <section className={`p-6 rounded-2xl shadow-lg transition-all ${
@@ -70,7 +81,7 @@ export default function FormProdutoGenerico({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-        {/* Coluna esquerda — campos de texto */}
+        {/* ── Coluna esquerda ── */}
         <div className="space-y-4">
 
           {/* Nome */}
@@ -98,8 +109,8 @@ export default function FormProdutoGenerico({
             />
           </label>
 
-          {/* Campos extras do tipo text e number */}
-          {config?.camposExtras?.filter((c) => c.tipo === "text" || c.tipo === "number").map((campo) => (
+          {/* Campos extras: text e number */}
+          {camposEsquerda.map((campo) => (
             <label key={campo.key} className="block">
               <span className="text-sm font-medium text-gray-700">{campo.label}</span>
               <input
@@ -113,10 +124,10 @@ export default function FormProdutoGenerico({
           ))}
         </div>
 
-        {/* Coluna direita — preço, categoria, imagem */}
+        {/* ── Coluna direita ── */}
         <div className="space-y-4">
 
-          {/* Preço simples (quando não usa sizes) */}
+          {/* Preço simples */}
           {!config?.usaSizes && (
             <div className="grid grid-cols-2 gap-4">
               <label>
@@ -127,18 +138,16 @@ export default function FormProdutoGenerico({
                   placeholder="0,00"
                   value={produto.preco ?? ""}
                   onChange={(e) => setProduto({ ...produto, preco: e.target.value })}
-                  className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 border outline-none focus:ring-2 focus:ring-amber-400"
+                  className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </label>
-
-              {/* Categoria */}
               {config?.categorias?.length > 0 && (
                 <label>
                   <span className="text-sm font-medium text-gray-700">Categoria</span>
                   <select
                     value={produto.categoria ?? ""}
                     onChange={(e) => setProduto({ ...produto, categoria: e.target.value })}
-                    className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 border outline-none"
+                    className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 outline-none"
                   >
                     {config.categorias.map((cat) => (
                       <option key={cat} value={cat}>{cat.toUpperCase()}</option>
@@ -158,15 +167,13 @@ export default function FormProdutoGenerico({
                 prices={produto.prices ?? {}}
                 onChange={(sizes, prices) => setProduto({ ...produto, sizes, prices })}
               />
-
-              {/* Categoria junto com sizes */}
               {config?.categorias?.length > 0 && (
                 <label>
                   <span className="text-sm font-medium text-gray-700">Categoria</span>
                   <select
                     value={produto.categoria ?? ""}
                     onChange={(e) => setProduto({ ...produto, categoria: e.target.value })}
-                    className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 border outline-none"
+                    className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 outline-none"
                   >
                     {config.categorias.map((cat) => (
                       <option key={cat} value={cat}>{cat.toUpperCase()}</option>
@@ -177,14 +184,14 @@ export default function FormProdutoGenerico({
             </div>
           )}
 
-          {/* Campos extras do tipo select */}
-          {config?.camposExtras?.filter((c) => c.tipo === "select").map((campo) => (
+          {/* Campos extras: select */}
+          {camposDireita.filter((c) => c.tipo === "select").map((campo) => (
             <label key={campo.key} className="block">
               <span className="text-sm font-medium text-gray-700">{campo.label}</span>
               <select
                 value={produto[campo.key] ?? ""}
                 onChange={(e) => setProduto({ ...produto, [campo.key]: e.target.value })}
-                className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 border outline-none"
+                className="mt-1 block w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 outline-none"
               >
                 <option value="">Selecione...</option>
                 {campo.opcoes?.map((op) => (
@@ -194,8 +201,8 @@ export default function FormProdutoGenerico({
             </label>
           ))}
 
-          {/* Campos extras do tipo toggle */}
-          {config?.camposExtras?.filter((c) => c.tipo === "toggle").map((campo) => (
+          {/* Campos extras: toggle */}
+          {camposDireita.filter((c) => c.tipo === "toggle").map((campo) => (
             <label key={campo.key} className="flex items-center gap-3 cursor-pointer">
               <div
                 onClick={() => setProduto({ ...produto, [campo.key]: !produto[campo.key] })}
@@ -243,6 +250,108 @@ export default function FormProdutoGenerico({
         </div>
       </div>
 
+      {/* ── Campos de largura total: multiselect e extras-ref ── */}
+      {camposLarguraTotal.length > 0 && (
+        <div className="mt-5 space-y-5 pt-5 border-t border-gray-100">
+          {camposLarguraTotal.map((campo) => {
+
+            // ── multiselect: chips de opções fixas ──
+            if (campo.tipo === "multiselect") {
+              return (
+                <MultiSelectField
+                  key={campo.key}
+                  campo={campo}
+                  value={produto[campo.key]}
+                  onChange={(val) => setProduto({ ...produto, [campo.key]: val })}
+                />
+              );
+            }
+
+            // ── extras-ref: seleciona itens de uma SecaoExtras existente ──
+            // campo.extraId deve corresponder ao id de um extra em config.extras[]
+            if (campo.tipo === "extras-ref") {
+              const itensDisponiveis = docData?.[campo.extraId] ?? [];
+              const selecionados = Array.isArray(produto[campo.key])
+                ? produto[campo.key]
+                : [];
+
+              function toggleExtrasRef(itemNome) {
+                if (selecionados.includes(itemNome)) {
+                  setProduto({ ...produto, [campo.key]: selecionados.filter((s) => s !== itemNome) });
+                } else {
+                  setProduto({ ...produto, [campo.key]: [...selecionados, itemNome] });
+                }
+              }
+
+              if (itensDisponiveis.length === 0) {
+                // Busca o label da seção extra correspondente
+                const secaoLabel = config?.extras?.find((e) => e.id === campo.extraId)?.label ?? campo.extraId;
+                return (
+                  <div key={campo.key} className="space-y-1">
+                    <span className="text-sm font-medium text-gray-700">{campo.label}</span>
+                    <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <span className="text-amber-500 text-lg shrink-0">⚠️</span>
+                      <div>
+                        <p className="text-xs font-semibold text-amber-700">
+                          Nenhum item cadastrado em "{secaoLabel}"
+                        </p>
+                        <p className="text-xs text-amber-600 mt-0.5">
+                          Role até a seção <strong>"{secaoLabel}"</strong> no final desta página,
+                          adicione os itens lá e eles aparecerão aqui automaticamente.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={campo.key} className="space-y-2">
+                  <span className="text-sm font-medium text-gray-700">{campo.label}</span>
+                  <div className="flex flex-wrap gap-2">
+                    {itensDisponiveis.map((item) => {
+                      const ativo = selecionados.includes(item.nome);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleExtrasRef(item.nome)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                            ativo
+                              ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                              : "bg-gray-100 text-gray-600 border-gray-200 hover:border-amber-400 hover:bg-amber-50"
+                          }`}
+                        >
+                          {ativo && <span className="mr-1">✓</span>}
+                          {item.nome}
+                          {item.preco > 0 && (
+                            <span className={`ml-1 ${ativo ? "text-amber-100" : "text-gray-400"}`}>
+                              +R${Number(item.preco).toFixed(2).replace(".", ",")}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selecionados.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {selecionados.map((s) => (
+                        <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded-full border border-amber-200">
+                          {s}
+                          <button type="button" onClick={() => toggleExtrasRef(s)} className="hover:text-amber-600 text-amber-500 leading-none">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return null;
+          })}
+        </div>
+      )}
+
       {/* Botões */}
       <div className="flex gap-3 mt-8">
         <button
@@ -265,7 +374,7 @@ export default function FormProdutoGenerico({
 }
 
 // ─────────────────────────────────────────────
-// SizesEditor — gerencia tamanhos + preços
+// SizesEditor — sem alterações
 // ─────────────────────────────────────────────
 
 const SIZES_SUGERIDOS = ["P", "M", "G", "GG", "Único", "Brotinho", "Família"];
@@ -293,7 +402,6 @@ function SizesEditor({ sizes, prices, onChange }) {
 
   return (
     <div className="space-y-3">
-      {/* Tamanhos sugeridos */}
       <div className="flex flex-wrap gap-2">
         {SIZES_SUGERIDOS.map((s) => (
           <button
@@ -309,8 +417,6 @@ function SizesEditor({ sizes, prices, onChange }) {
           </button>
         ))}
       </div>
-
-      {/* Tamanho personalizado */}
       <div className="flex gap-2">
         <input
           placeholder="Tamanho personalizado"
@@ -326,8 +432,6 @@ function SizesEditor({ sizes, prices, onChange }) {
           +
         </button>
       </div>
-
-      {/* Preços por tamanho */}
       {sizes.length > 0 && (
         <div className="space-y-2">
           {sizes.map((s) => (
@@ -353,6 +457,3 @@ function SizesEditor({ sizes, prices, onChange }) {
     </div>
   );
 }
-
-// useState precisa ser importado para SizesEditor funcionar
-import { useState } from "react";

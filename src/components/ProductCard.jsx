@@ -3,6 +3,7 @@ import { FaPlus } from "react-icons/fa";
 import { motion } from "framer-motion";
 import PromoModal from "./PromoModal";
 import SizeModal from "./SizeModal";
+import CustomizacaoModal from "./CustomizacaoModal";
 
 const MotionDiv = motion.div;
 
@@ -15,10 +16,17 @@ const parsePreco = (valor) => {
 const formatPreco = (valor) =>
   parsePreco(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function ProductCard({ p, onAdd, disabled }) {
+export default function ProductCard({
+  p,
+  onAdd,
+  disabled,
+  painelConfig,  
+  docData,       
+}) {
   const [selectedSize, setSelectedSize] = useState("");
-  const [promoOpen, setPromoOpen] = useState(false);
-  const [sizeOpen, setSizeOpen] = useState(false);
+  const [promoOpen, setPromoOpen]       = useState(false);
+  const [sizeOpen, setSizeOpen]         = useState(false);
+  const [customOpen, setCustomOpen]     = useState(false);
 
   const sizes = useMemo(() => {
     if (!p.prices) return [];
@@ -28,6 +36,11 @@ export default function ProductCard({ p, onAdd, disabled }) {
   const category = (p.category || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const isPromo = category === "promocao" || category === "promoção";
   const hasMultipleSizes = sizes.length > 1;
+
+  // Verifica se o produto tem campos de customização configurados no painel
+  const hasCustomFields = (painelConfig?.camposExtras ?? []).some(
+    (c) => c.tipo === "multiselect" || c.tipo === "extras-ref" || c.tipo === "toggle"
+  );
 
   const { displayPrice, isStartingPrice } = useMemo(() => {
     if (category === "pizza" && p.montar) return { displayPrice: "Monte a sua", isStartingPrice: false };
@@ -42,13 +55,17 @@ export default function ProductCard({ p, onAdd, disabled }) {
   const handleAdd = () => {
     if (disabled) return;
 
-    // Promoções abrem PromoModal
+    // Promoções → PromoModal
     if (isPromo) { setPromoOpen(true); return; }
 
-    // Produtos com múltiplos tamanhos sem seleção → abre SizeModal
+    // Tem campos de customização → CustomizacaoModal
+    // (lida com tamanhos também internamente)
+    if (hasCustomFields) { setCustomOpen(true); return; }
+
+    // Múltiplos tamanhos sem customização → SizeModal
     if (hasMultipleSizes && !selectedSize) { setSizeOpen(true); return; }
 
-    // Tamanho único ou já selecionado → adiciona direto
+    // Adiciona direto
     const size = selectedSize || (sizes.length === 1 ? sizes[0][0] : "único");
     const price = sizes.length > 0
       ? parsePreco(p.prices[size])
@@ -103,8 +120,8 @@ export default function ProductCard({ p, onAdd, disabled }) {
           <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-1">{p.name}</h3>
           <p className="text-gray-400 text-[11px] line-clamp-2 min-h-[28px]">{p.description || ""}</p>
 
-          {/* Pills de tamanho */}
-          {hasMultipleSizes && !isPromo && category !== "pizza" && (
+          {/* Pills de tamanho (apenas quando não tem customização) */}
+          {hasMultipleSizes && !isPromo && !hasCustomFields && category !== "pizza" && (
             <div className="flex gap-1 mt-1 overflow-x-auto scrollbar-hide pb-0.5">
               {sizes.map(([size]) => (
                 <button key={size}
@@ -118,6 +135,13 @@ export default function ProductCard({ p, onAdd, disabled }) {
                 </button>
               ))}
             </div>
+          )}
+
+          {/* Indicador visual de customização disponível */}
+          {hasCustomFields && !isPromo && (
+            <p className="text-[10px] text-orange-500 font-bold mt-1">
+              ✦ Personalize seu pedido
+            </p>
           )}
 
           <div className="flex items-end justify-between mt-auto pt-2">
@@ -159,6 +183,16 @@ export default function ProductCard({ p, onAdd, disabled }) {
         onClose={() => setSizeOpen(false)}
         produto={p}
         onConfirm={handleSizeConfirm}
+      />
+
+      <CustomizacaoModal
+        open={customOpen}
+        onClose={() => setCustomOpen(false)}
+        produto={p}
+        painelConfig={painelConfig}
+        docData={docData}
+        onConfirm={onAdd}
+        disabled={disabled}
       />
     </>
   );

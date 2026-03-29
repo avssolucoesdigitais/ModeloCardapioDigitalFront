@@ -33,9 +33,14 @@ function produtoVazio(config) {
     prices: {},
   };
 
-  // Adiciona campos extras com valor vazio
   (config?.camposExtras ?? []).forEach((campo) => {
-    base[campo.key] = campo.tipo === "toggle" ? false : "";
+    if (campo.tipo === "toggle") {
+      base[campo.key] = false;
+    } else if (campo.tipo === "multiselect" || campo.tipo === "extras-ref") {
+      base[campo.key] = []; // arrays vazios para campos de seleção múltipla
+    } else {
+      base[campo.key] = "";
+    }
   });
 
   return base;
@@ -46,10 +51,10 @@ function produtoVazio(config) {
 // ─────────────────────────────────────────────
 
 export function usePainel(lojaId, painelId) {
-  const [config, setConfig]     = useState(null);   // doc de paineis/{painelId}
-  const [docData, setDocData]   = useState(null);   // doc de opcoes/{opcaoId}
-  const [loading, setLoading]   = useState(true);
-  const [erro, setErro]         = useState(null);
+  const [config, setConfig]   = useState(null);
+  const [docData, setDocData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro]       = useState(null);
 
   // ── Carrega config do painel + dados dos produtos ──
   useEffect(() => {

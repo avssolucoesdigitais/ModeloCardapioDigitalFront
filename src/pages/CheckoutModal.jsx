@@ -25,23 +25,41 @@ function sanitize(obj) {
   return obj;
 }
 
+// ── Formata customizações de um item para texto legível ──
+function formatarCustomizacoes(customizacoes) {
+  if (!customizacoes || typeof customizacoes !== "object") return "";
+  const linhas = [];
+  Object.entries(customizacoes).forEach(([key, valor]) => {
+    if (valor === false || valor === "" || valor === null || valor === undefined) return;
+    const label = key.replace(/-/g, " ").replace(/([A-Z])/g, " $1").trim();
+    if (valor === true) {
+      linhas.push(`   ✓ ${label}`);
+    } else if (Array.isArray(valor) && valor.length > 0) {
+      linhas.push(`   • ${label}: ${valor.join(", ")}`);
+    } else if (typeof valor === "string" && valor.trim()) {
+      linhas.push(`   • ${label}: ${valor}`);
+    }
+  });
+  return linhas.join("\n");
+}
+
 export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId }) {
   const { config, loading: loadingConfig } = useLojaConfig(lojaId);
   const { cep, setCep, loadingCep, cepErro, buscarCep } = useCep();
 
-  const [nome, setNome] = useState("");
-  const [phone, setPhone] = useState("");
-  const [entrega, setEntrega] = useState("entrega");
-  const [rua, setRua] = useState("");
-  const [numero, setNumero] = useState("");
+  const [nome, setNome]             = useState("");
+  const [phone, setPhone]           = useState("");
+  const [entrega, setEntrega]       = useState("entrega");
+  const [rua, setRua]               = useState("");
+  const [numero, setNumero]         = useState("");
   const [referencia, setReferencia] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [pagamento, setPagamento] = useState("pix");
-  const [troco, setTroco] = useState("");
+  const [bairro, setBairro]         = useState("");
+  const [pagamento, setPagamento]   = useState("pix");
+  const [troco, setTroco]           = useState("");
   const [observacao, setObservacao] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [cupom, setCupom] = useState("");
-  const [desconto, setDesconto] = useState(0);
+  const [loading, setLoading]       = useState(false);
+  const [cupom, setCupom]           = useState("");
+  const [desconto, setDesconto]     = useState(0);
 
   const itensCarrinho = cart.items || [];
 
@@ -156,6 +174,7 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId })
         status: "PENDENTE", createdAt: new Date().toISOString(),
       }), { merge: true });
 
+      // ── Monta mensagem WhatsApp ──
       let msg = `🛒 *Novo Pedido*\n`;
       msg += `👤 Cliente: ${nome}\n📱 WhatsApp: ${phone}\n`;
       if (entrega === "entrega") {
@@ -174,8 +193,10 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId })
       msg += `\n*Itens:*\n`;
       itensCarrinho.forEach((item) => {
         const qty = item?.qty ?? 0;
-        const size = item?.size ? `(${item.size})` : "";
-        msg += `- ${qty}x ${item.name} ${size}\n`;
+        const size = item?.size ? ` (${item.size})` : "";
+        msg += `• ${qty}x ${item.name}${size}\n`;
+
+        // Sabores / borda / adicionais (pizza/pastel)
         if (Array.isArray(item.flavors) && item.flavors.length > 0)
           msg += `   Sabores: ${item.flavors.join(" + ")}\n`;
         if (item.crust) {
@@ -185,6 +206,13 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId })
         }
         if (Array.isArray(item.addons) && item.addons.length > 0)
           msg += `   Adicionais: ${item.addons.map((a) => `${a.nome} (+${formatPreco(a.preco)})`).join(", ")}\n`;
+
+        // ── NOVO: customizações (açaí, marmita, etc.) ──
+        if (item.customizacoes) {
+          const custom = formatarCustomizacoes(item.customizacoes);
+          if (custom) msg += `${custom}\n`;
+        }
+
         msg += `   Preço unitário: ${formatPreco(parsePreco(item?.price ?? 0))}\n`;
       });
 
@@ -224,6 +252,19 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId })
               {item.flavors?.length > 0 && <div>🍕 Sabores: {item.flavors.join(" + ")}</div>}
               {item.crust && <div>🌟 Borda: {item.crust.nome} {parsePreco(item.crust.preco) > 0 ? `(${formatPreco(item.crust.preco)})` : "(Grátis)"}</div>}
               {item.addons?.length > 0 && <div>➕ Adicionais: {item.addons.map((a) => `${a.nome} (${formatPreco(a.preco)})`).join(", ")}</div>}
+
+              {/* ── NOVO: exibe customizações no modal ── */}
+              {item.customizacoes && Object.entries(item.customizacoes).map(([key, valor]) => {
+                if (valor === false || valor === "" || valor === null || valor === undefined) return null;
+                const label = key.replace(/-/g, " ").replace(/([A-Z])/g, " $1").trim();
+                if (valor === true) return <div key={key}>✓ {label}</div>;
+                if (Array.isArray(valor) && valor.length > 0)
+                  return <div key={key}>• {label}: <strong>{valor.join(", ")}</strong></div>;
+                if (typeof valor === "string" && valor.trim())
+                  return <div key={key}>• {label}: <strong>{valor}</strong></div>;
+                return null;
+              })}
+
               <div>💵 Preço unitário: {formatPreco(item.price)}</div>
             </div>
           ))}
@@ -269,7 +310,6 @@ export default function CheckoutModal({ open, onClose, cart, whatsapp, lojaId })
 
         {entrega === "entrega" && (
           <div className="mb-4 space-y-3">
-            {/* CEP */}
             <label className="block">
               <span className="text-sm text-gray-600">CEP</span>
               <div className="relative mt-1">
