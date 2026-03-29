@@ -49,11 +49,14 @@ function slugify(str) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
+// ── ATUALIZADO: adicionados multiselect e extras-ref ──
 const TIPOS_CAMPO = [
-  { value: "text",   label: "Texto" },
-  { value: "number", label: "Número" },
-  { value: "select", label: "Seleção" },
-  { value: "toggle", label: "Toggle (sim/não)" },
+  { value: "text",        label: "Texto" },
+  { value: "number",      label: "Número" },
+  { value: "select",      label: "Seleção única" },
+  { value: "toggle",      label: "Toggle (sim/não)" },
+  { value: "multiselect", label: "Múltipla escolha (chips)" },
+  { value: "extras-ref",  label: "Lista da seção extra" },
 ];
 
 const ICONES_SUGERIDOS = [
@@ -67,13 +70,13 @@ const ICONES_SUGERIDOS = [
 // ─────────────────────────────────────────────
 
 export default function GerenciadorPaineis({ lojaId }) {
-  const [paineis, setPaineis]       = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [modalAberto, setModalAberto] = useState(false);
-  const [painelEditando, setPainelEditando] = useState(null); // null = novo
-  const [salvando, setSalvando]     = useState(false);
-  const [draggingId, setDraggingId] = useState(null);
-  const dragOver                    = useRef(null);
+  const [paineis, setPaineis]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [modalAberto, setModalAberto]   = useState(false);
+  const [painelEditando, setPainelEditando] = useState(null);
+  const [salvando, setSalvando]         = useState(false);
+  const [draggingId, setDraggingId]     = useState(null);
+  const dragOver                        = useRef(null);
 
   // ── Carrega painéis ──
   useEffect(() => {
@@ -89,19 +92,16 @@ export default function GerenciadorPaineis({ lojaId }) {
     })();
   }, [lojaId]);
 
-  // ── Abre modal de criação ──
   function abrirNovo() {
     setPainelEditando({ id: null, ...painelVazio() });
     setModalAberto(true);
   }
 
-  // ── Abre modal de edição ──
   function abrirEditar(painel) {
     setPainelEditando({ ...painel });
     setModalAberto(true);
   }
 
-  // ── Salva (cria ou atualiza) ──
   async function salvarPainel(dados) {
     setSalvando(true);
     try {
@@ -110,7 +110,7 @@ export default function GerenciadorPaineis({ lojaId }) {
       const payload = {
         nome:         dados.nome,
         icone:        dados.icone,
-        opcaoId:      dados.opcaoId || dados.nome, // fallback: usa nome como opcaoId
+        opcaoId:      dados.opcaoId || dados.nome,
         categorias:   dados.categorias,
         usaSizes:     dados.usaSizes,
         extras:       dados.extras,
@@ -119,7 +119,6 @@ export default function GerenciadorPaineis({ lojaId }) {
         ordem:        dados.ordem ?? paineis.length + 1,
       };
       await setDoc(ref, payload, { merge: true });
-
       setPaineis((prev) => {
         const existe = prev.find((p) => p.id === id);
         if (existe) return prev.map((p) => p.id === id ? { id, ...payload } : p);
@@ -131,7 +130,6 @@ export default function GerenciadorPaineis({ lojaId }) {
     }
   }
 
-  // ── Toggle ativo/inativo ──
   async function toggleAtivo(painel) {
     const ref = doc(db, "lojas", lojaId, "paineis", painel.id);
     const novoAtivo = !painel.ativo;
@@ -141,16 +139,13 @@ export default function GerenciadorPaineis({ lojaId }) {
     );
   }
 
-  // ── Excluir ──
   async function excluirPainel(painel) {
     if (!confirm(`Excluir o painel "${painel.nome}"?\n\nOs produtos em opcoes/${painel.opcaoId} NÃO serão apagados.`)) return;
     await deleteDoc(doc(db, "lojas", lojaId, "paineis", painel.id));
     setPaineis((prev) => prev.filter((p) => p.id !== painel.id));
   }
 
-  // ── Drag and drop para reordenar ──
   function onDragStart(id) { setDraggingId(id); }
-
   function onDragEnter(id) { dragOver.current = id; }
 
   async function onDragEnd() {
@@ -163,23 +158,16 @@ export default function GerenciadorPaineis({ lojaId }) {
     const toIdx   = lista.findIndex((p) => p.id === dragOver.current);
     const [moved] = lista.splice(fromIdx, 1);
     lista.splice(toIdx, 0, moved);
-
     const reordenados = lista.map((p, i) => ({ ...p, ordem: i + 1 }));
     setPaineis(reordenados);
     setDraggingId(null);
     dragOver.current = null;
-
-    // Persiste nova ordem em batch
     const batch = writeBatch(db);
     reordenados.forEach((p) => {
       batch.update(doc(db, "lojas", lojaId, "paineis", p.id), { ordem: p.ordem });
     });
     await batch.commit();
   }
-
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -208,7 +196,7 @@ export default function GerenciadorPaineis({ lojaId }) {
         </button>
       </div>
 
-      {/* Lista de painéis */}
+      {/* Lista */}
       {paineis.length === 0 ? (
         <div className="py-16 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
           <p className="text-4xl mb-3">🍽️</p>
@@ -233,48 +221,37 @@ export default function GerenciadorPaineis({ lojaId }) {
                   : "border-gray-100 hover:border-gray-200 hover:shadow-sm"
               } ${!painel.ativo ? "opacity-60" : ""}`}
             >
-              {/* Handle drag */}
               <span className="text-gray-300 text-lg shrink-0">⠿</span>
-
-              {/* Ícone + nome */}
               <span className="text-2xl shrink-0">{painel.icone}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-bold text-gray-800">{painel.nome}</h3>
                   {!painel.ativo && (
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-400 text-xs font-bold rounded-full">
-                      Inativo
-                    </span>
+                    <span className="px-2 py-0.5 bg-gray-100 text-gray-400 text-xs font-bold rounded-full">Inativo</span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {painel.categorias?.map((cat) => (
-                    <span key={cat} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-md border border-amber-100">
-                      {cat}
-                    </span>
+                    <span key={cat} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-md border border-amber-100">{cat}</span>
                   ))}
                   {painel.usaSizes && (
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-md border border-blue-100">
-                      Tamanhos
-                    </span>
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-md border border-blue-100">Tamanhos</span>
                   )}
                   {painel.extras?.map((e) => (
-                    <span key={e.id} className="px-2 py-0.5 bg-gray-50 text-gray-500 text-xs rounded-md border border-gray-100">
-                      {e.label}
-                    </span>
+                    <span key={e.id} className="px-2 py-0.5 bg-gray-50 text-gray-500 text-xs rounded-md border border-gray-100">{e.label}</span>
+                  ))}
+                  {/* Mostra badge para campos multiselect e extras-ref */}
+                  {painel.camposExtras?.filter((c) => c.tipo === "multiselect" || c.tipo === "extras-ref").map((c) => (
+                    <span key={c.key} className="px-2 py-0.5 bg-teal-50 text-teal-600 text-xs rounded-md border border-teal-100">{c.label}</span>
                   ))}
                 </div>
               </div>
-
-              {/* Ações */}
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => toggleAtivo(painel)}
                   title={painel.ativo ? "Desativar" : "Ativar"}
                   className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all text-sm ${
-                    painel.ativo
-                      ? "bg-green-50 text-green-600 hover:bg-green-100"
-                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                    painel.ativo ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
                   }`}
                 >
                   {painel.ativo ? "✓" : "○"}
@@ -282,22 +259,17 @@ export default function GerenciadorPaineis({ lojaId }) {
                 <button
                   onClick={() => abrirEditar(painel)}
                   className="w-9 h-9 rounded-xl bg-gray-50 text-gray-500 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center transition-all text-sm"
-                >
-                  ✎
-                </button>
+                >✎</button>
                 <button
                   onClick={() => excluirPainel(painel)}
                   className="w-9 h-9 rounded-xl bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all text-sm"
-                >
-                  ✕
-                </button>
+                >✕</button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal de criação/edição */}
       {modalAberto && painelEditando && (
         <ModalPainel
           painel={painelEditando}
@@ -315,11 +287,13 @@ export default function GerenciadorPaineis({ lojaId }) {
 // ─────────────────────────────────────────────
 
 function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
-  const [form, setForm] = useState({ ...painel });
+  const [form, setForm]               = useState({ ...painel });
   const [novaCategoria, setNovaCategoria] = useState("");
-  const [novoExtra, setNovoExtra]         = useState({ id: "", label: "" });
-  const [novoCampo, setNovoCampo]         = useState({ key: "", label: "", tipo: "text", opcoes: "" });
-  const [abaAtiva, setAbaAtiva]           = useState("geral");
+  const [novoExtra, setNovoExtra]     = useState({ id: "", label: "" });
+  const [novoCampo, setNovoCampo]     = useState({
+    key: "", label: "", tipo: "text", opcoes: "", max: "", extraId: "",
+  });
+  const [abaAtiva, setAbaAtiva]       = useState("geral");
 
   function addCategoria() {
     const cat = novaCategoria.trim().toLowerCase();
@@ -347,27 +321,44 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
   function addCampoExtra() {
     const key = slugify(novoCampo.key || novoCampo.label) || `campo-${Date.now()}`;
     if (!novoCampo.label.trim()) return;
+
     const campo = {
       key,
-      label:   novoCampo.label.trim(),
-      tipo:    novoCampo.tipo,
-      ...(novoCampo.tipo === "select" && {
-        opcoes: novoCampo.opcoes.split(",").map((o) => o.trim()).filter(Boolean),
-      }),
+      label: novoCampo.label.trim(),
+      tipo:  novoCampo.tipo,
     };
+
+    // Campos específicos por tipo
+    if (novoCampo.tipo === "select") {
+      campo.opcoes = novoCampo.opcoes.split(",").map((o) => o.trim()).filter(Boolean);
+    }
+    if (novoCampo.tipo === "multiselect") {
+      campo.opcoes = novoCampo.opcoes.split(",").map((o) => o.trim()).filter(Boolean);
+      if (novoCampo.max) campo.max = parseInt(novoCampo.max, 10);
+    }
+    if (novoCampo.tipo === "extras-ref") {
+      // extraId referencia um id em form.extras[]
+      campo.extraId = novoCampo.extraId || slugify(novoCampo.label);
+    }
+
     setForm({ ...form, camposExtras: [...form.camposExtras, campo] });
-    setNovoCampo({ key: "", label: "", tipo: "text", opcoes: "" });
+    setNovoCampo({ key: "", label: "", tipo: "text", opcoes: "", max: "", extraId: "" });
   }
 
   function removeCampoExtra(key) {
     setForm({ ...form, camposExtras: form.camposExtras.filter((c) => c.key !== key) });
   }
 
+  // Label amigável do tipo
+  function labelTipo(tipo) {
+    return TIPOS_CAMPO.find((t) => t.value === tipo)?.label ?? tipo;
+  }
+
   const abas = [
-    { id: "geral",   label: "Geral" },
+    { id: "geral",      label: "Geral" },
     { id: "categorias", label: "Categorias" },
-    { id: "extras",  label: "Seções extras" },
-    { id: "campos",  label: "Campos extras" },
+    { id: "extras",     label: "Seções extras" },
+    { id: "campos",     label: "Campos extras" },
   ];
 
   return (
@@ -377,14 +368,12 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
     >
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
 
-        {/* Header do modal */}
+        {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-lg font-black text-gray-800">
             {painel.id ? `Editando: ${painel.nome}` : "Novo Painel"}
           </h2>
-          <button onClick={onFechar} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
-            ✕
-          </button>
+          <button onClick={onFechar} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">✕</button>
         </div>
 
         {/* Abas */}
@@ -404,13 +393,12 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
           ))}
         </div>
 
-        {/* Conteúdo das abas */}
+        {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
           {/* ── ABA GERAL ── */}
           {abaAtiva === "geral" && (
             <>
-              {/* Ícone */}
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-2">Ícone</label>
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -436,7 +424,6 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
                 />
               </div>
 
-              {/* Nome */}
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">Nome do painel</span>
                 <input
@@ -447,23 +434,6 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
                 />
               </label>
 
-              {/* opcaoId */}
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  ID da coleção no Firestore
-                  <span className="ml-2 text-xs text-gray-400 font-normal">
-                    (nome do doc em opcoes/ — deixe em branco para usar o nome)
-                  </span>
-                </span>
-                <input
-                  placeholder={form.nome || "Ex: Pizza"}
-                  value={form.opcaoId}
-                  onChange={(e) => setForm({ ...form, opcaoId: e.target.value })}
-                  className="mt-1 w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-300 outline-none transition-all font-mono text-sm"
-                />
-              </label>
-
-              {/* usaSizes */}
               <div
                 onClick={() => setForm({ ...form, usaSizes: !form.usaSizes })}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-amber-50 transition-colors border border-transparent hover:border-amber-100"
@@ -477,7 +447,6 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
                 </div>
               </div>
 
-              {/* ativo */}
               <div
                 onClick={() => setForm({ ...form, ativo: !form.ativo })}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-amber-50 transition-colors border border-transparent hover:border-amber-100"
@@ -524,7 +493,7 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 {["tradicional","especial","doce","combo","família","vegano"].map((s) => (
-                  <button key={s} onClick={() => { setNovaCategoria(s); }}
+                  <button key={s} onClick={() => setNovaCategoria(s)}
                     className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors">
                     + {s}
                   </button>
@@ -538,6 +507,10 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
             <>
               <p className="text-sm text-gray-500">
                 Seções extras aparecem abaixo da lista de produtos. Ex: bordas, adicionais, molhos.
+                <br />
+                <span className="text-teal-600 font-medium">
+                  Dica: campos do tipo "Lista da seção extra" referenciam essas seções.
+                </span>
               </p>
               <div className="space-y-2">
                 {form.extras.map((extra) => (
@@ -566,7 +539,7 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {["Adicionais","Bordas","Molhos","Acompanhamentos","Bases","Bebidas inclusas"].map((s) => (
+                {["Adicionais","Bordas","Molhos","Acompanhamentos","Bases","Bebidas inclusas","Guarnições","Proteínas"].map((s) => (
                   <button key={s} onClick={() => setNovoExtra({ ...novoExtra, label: s })}
                     className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded-lg hover:bg-amber-50 hover:text-amber-700 transition-colors">
                     + {s}
@@ -582,18 +555,30 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
               <p className="text-sm text-gray-500">
                 Campos extras aparecem no formulário de cada produto deste painel.
               </p>
+
+              {/* Lista de campos já adicionados */}
               <div className="space-y-2">
                 {form.camposExtras.map((campo) => (
                   <div key={campo.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                    <div>
-                      <p className="text-sm font-bold text-gray-700">{campo.label}</p>
-                      <p className="text-xs text-gray-400">
-                        <span className="font-mono">{campo.key}</span>
-                        {" · "}{TIPOS_CAMPO.find((t) => t.value === campo.tipo)?.label}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-gray-700">{campo.label}</p>
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-md ${
+                          campo.tipo === "multiselect" || campo.tipo === "extras-ref"
+                            ? "bg-teal-50 text-teal-700 border border-teal-100"
+                            : "bg-gray-100 text-gray-500"
+                        }`}>
+                          {labelTipo(campo.tipo)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5 font-mono truncate">
+                        {campo.key}
                         {campo.opcoes?.length > 0 && ` · ${campo.opcoes.join(", ")}`}
+                        {campo.max && ` · max: ${campo.max}`}
+                        {campo.extraId && ` · ref: ${campo.extraId}`}
                       </p>
                     </div>
-                    <button onClick={() => removeCampoExtra(campo.key)} className="text-gray-300 hover:text-red-500 transition-colors">✕</button>
+                    <button onClick={() => removeCampoExtra(campo.key)} className="text-gray-300 hover:text-red-500 transition-colors ml-3 shrink-0">✕</button>
                   </div>
                 ))}
                 {form.camposExtras.length === 0 && (
@@ -601,12 +586,14 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
                 )}
               </div>
 
-              <div className="space-y-3 pt-2 border-t border-gray-100">
+              {/* Formulário de novo campo */}
+              <div className="space-y-3 pt-3 border-t border-gray-100">
+
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block">
                     <span className="text-xs font-medium text-gray-600">Label do campo</span>
                     <input
-                      placeholder="Ex: Peso (g)"
+                      placeholder="Ex: Proteína"
                       value={novoCampo.label}
                       onChange={(e) => setNovoCampo({ ...novoCampo, label: e.target.value })}
                       className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-amber-300"
@@ -616,7 +603,7 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
                     <span className="text-xs font-medium text-gray-600">Tipo</span>
                     <select
                       value={novoCampo.tipo}
-                      onChange={(e) => setNovoCampo({ ...novoCampo, tipo: e.target.value })}
+                      onChange={(e) => setNovoCampo({ ...novoCampo, tipo: e.target.value, opcoes: "", max: "", extraId: "" })}
                       className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none"
                     >
                       {TIPOS_CAMPO.map((t) => (
@@ -625,20 +612,69 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
                     </select>
                   </label>
                 </div>
-                {novoCampo.tipo === "select" && (
+
+                {/* Opções para select e multiselect */}
+                {(novoCampo.tipo === "select" || novoCampo.tipo === "multiselect") && (
                   <label className="block">
                     <span className="text-xs font-medium text-gray-600">Opções (separadas por vírgula)</span>
                     <input
-                      placeholder="Ex: Pequeno, Médio, Grande"
+                      placeholder="Ex: Frango, Carne, Peixe, Tofu"
                       value={novoCampo.opcoes}
                       onChange={(e) => setNovoCampo({ ...novoCampo, opcoes: e.target.value })}
                       className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-amber-300"
                     />
                   </label>
                 )}
+
+                {/* Limite máximo para multiselect */}
+                {novoCampo.tipo === "multiselect" && (
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-600">
+                      Máximo de seleções
+                      <span className="ml-1 text-gray-400 font-normal">(deixe em branco para ilimitado)</span>
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Ex: 1 para seleção única"
+                      value={novoCampo.max}
+                      onChange={(e) => setNovoCampo({ ...novoCampo, max: e.target.value })}
+                      className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-amber-300"
+                    />
+                  </label>
+                )}
+
+                {/* Referência de seção para extras-ref */}
+                {novoCampo.tipo === "extras-ref" && (
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-600">
+                      Seção extra que este campo referencia
+                    </span>
+                    {form.extras.length > 0 ? (
+                      <select
+                        value={novoCampo.extraId}
+                        onChange={(e) => setNovoCampo({ ...novoCampo, extraId: e.target.value })}
+                        className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none"
+                      >
+                        <option value="">Selecione uma seção...</option>
+                        {form.extras.map((e) => (
+                          <option key={e.id} value={e.id}>{e.label} ({e.id})</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                        <p className="text-xs text-amber-700">
+                          ⚠️ Nenhuma seção extra criada ainda. Vá para a aba <strong>Seções extras</strong> e crie uma primeiro.
+                        </p>
+                      </div>
+                    )}
+                  </label>
+                )}
+
                 <button
                   onClick={addCampoExtra}
-                  className="w-full h-10 bg-gray-800 text-white rounded-xl text-sm font-bold hover:bg-amber-500 transition-colors"
+                  disabled={novoCampo.tipo === "extras-ref" && !novoCampo.extraId}
+                  className="w-full h-10 bg-gray-800 text-white rounded-xl text-sm font-bold hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Adicionar campo
                 </button>
@@ -647,7 +683,7 @@ function ModalPainel({ painel, onSalvar, onFechar, salvando }) {
           )}
         </div>
 
-        {/* Footer do modal */}
+        {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
           <button
             onClick={onFechar}

@@ -107,6 +107,7 @@ export default function PainelGenerico({ lojaId, painelId }) {
           onCancelar={resetForm}
           loadingImg={loadingImg}
           setLoadingImg={setLoadingImg}
+          docData={docData}  
         />
       </div>
 

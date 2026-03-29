@@ -1,19 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { db } from "/src/firebase";
 import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-  doc,
-  deleteDoc,
+  collection, onSnapshot, orderBy, query,
+  updateDoc, doc, deleteDoc,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { FiBell, FiBellOff, FiPrinter, FiTrash2, FiClock, FiCheck, FiPlay } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams } from "react-router-dom";
-
 import notificacaoSound from "../sound/notificação.mp3";
 
 const getRelativeTime = (timestamp) => {
@@ -27,56 +21,82 @@ const getRelativeTime = (timestamp) => {
 function parsePreco(value) {
   if (value === undefined || value === null) return 0;
   if (typeof value === "number") return value;
-  if (typeof value === "string") {
+  if (typeof value === "string")
     return parseFloat(value.replace(",", ".").replace("R$", "").trim()) || 0;
-  }
   return 0;
+}
+
+// ── Renderiza customizações como lista de linhas ──
+function CustomizacoesLista({ customizacoes }) {
+  if (!customizacoes || typeof customizacoes !== "object") return null;
+  const linhas = [];
+  Object.entries(customizacoes).forEach(([key, valor]) => {
+    if (valor === false || valor === "" || valor === null || valor === undefined) return;
+    const label = key.replace(/-/g, " ").replace(/([A-Z])/g, " $1").trim();
+    if (valor === true) linhas.push({ label, texto: null });
+    else if (Array.isArray(valor) && valor.length > 0) linhas.push({ label, texto: valor.join(", ") });
+    else if (typeof valor === "string" && valor.trim()) linhas.push({ label, texto: valor });
+  });
+  if (linhas.length === 0) return null;
+  return (
+    <div className="mt-1 space-y-0.5">
+      {linhas.map(({ label, texto }) => (
+        <p key={label} className="text-xs text-slate-500 pl-2">
+          {texto ? <><span className="font-semibold text-slate-600">{label}:</span> {texto}</> : <><span className="text-orange-500">✓</span> {label}</>}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// ── Formata customizações para HTML de impressão ──
+function customizacoesHTML(customizacoes) {
+  if (!customizacoes || typeof customizacoes !== "object") return "";
+  const linhas = [];
+  Object.entries(customizacoes).forEach(([key, valor]) => {
+    if (valor === false || valor === "" || valor === null || valor === undefined) return;
+    const label = key.replace(/-/g, " ").replace(/([A-Z])/g, " $1").trim();
+    if (valor === true) linhas.push(`<p style="margin:2px 0 2px 12px; font-size:14px;">✓ ${label}</p>`);
+    else if (Array.isArray(valor) && valor.length > 0)
+      linhas.push(`<p style="margin:2px 0 2px 12px; font-size:14px;">• ${label}: <strong>${valor.join(", ")}</strong></p>`);
+    else if (typeof valor === "string" && valor.trim())
+      linhas.push(`<p style="margin:2px 0 2px 12px; font-size:14px;">• ${label}: <strong>${valor}</strong></p>`);
+  });
+  return linhas.join("");
 }
 
 export default function OrdersAdmin() {
   const { lojaSlug } = useParams();
   const LOJA_ID = lojaSlug;
 
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders]           = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const audioRef = useRef(null);
-  const prevIdsRef = useRef([]);
+  const audioRef                      = useRef(null);
+  const prevIdsRef                    = useRef([]);
 
   useEffect(() => {
     const pref = localStorage.getItem("soundEnabled");
     if (pref !== null) setSoundEnabled(pref === "true");
   }, []);
 
-  // ✅ CORRIGIDO: orders dentro da loja
   useEffect(() => {
-    const q = query(
-      collection(db, "lojas", LOJA_ID, "orders"),
-      orderBy("createdAt", "desc")
-    );
+    const q = query(collection(db, "lojas", LOJA_ID, "orders"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setOrders(docs);
-
       const currentIds = docs.map((o) => o.id);
       const novosPendentes = docs.filter(
-        (o) =>
-          (o.status || "").trim().toUpperCase() === "PENDENTE" &&
-          !prevIdsRef.current.includes(o.id)
+        (o) => (o.status || "").trim().toUpperCase() === "PENDENTE" && !prevIdsRef.current.includes(o.id)
       );
-
       if (soundEnabled && novosPendentes.length > 0) {
         toast.success("📦 Novo pedido recebido!");
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
-          audioRef.current.play().catch((err) =>
-            console.error("Erro ao tocar áudio:", err)
-          );
+          audioRef.current.play().catch((err) => console.error("Erro ao tocar áudio:", err));
         }
       }
-
       prevIdsRef.current = currentIds;
     });
-
     return () => unsub();
   }, [soundEnabled]);
 
@@ -87,46 +107,33 @@ export default function OrdersAdmin() {
     toast(newValue ? "🔔 Notificações sonoras ativadas!" : "🔕 Som desativado");
   };
 
-  // ✅ CORRIGIDO: referência do doc dentro da loja
   const updateStatus = async (id, status) => {
     try {
-      await updateDoc(doc(db, "lojas", LOJA_ID, "orders", id), {
-        status: status.trim().toUpperCase(),
-      });
-    } catch (err) {
-      console.error("❌ Erro ao atualizar status:", err);
-    }
+      await updateDoc(doc(db, "lojas", LOJA_ID, "orders", id), { status: status.trim().toUpperCase() });
+    } catch (err) { console.error("❌ Erro ao atualizar status:", err); }
   };
 
-  // ✅ CORRIGIDO: referência do doc dentro da loja
   const deleteOrder = async (id) => {
     if (confirm("Tem certeza que deseja excluir este pedido?")) {
-      try {
-        await deleteDoc(doc(db, "lojas", LOJA_ID, "orders", id));
-      } catch (err) {
-        console.error("❌ Erro ao excluir pedido:", err);
-      }
+      try { await deleteDoc(doc(db, "lojas", LOJA_ID, "orders", id)); }
+      catch (err) { console.error("❌ Erro ao excluir pedido:", err); }
     }
   };
 
   const printOrderKitchen = (pedido) => {
     const numeroPedido = pedido.orderNumber || pedido.id.slice(-4).toUpperCase();
-
-    const itensHTML = (pedido.items || [])
-      .map(
-        (item) => `
-        <div style="margin-bottom:18px; border-bottom:1px dashed #000; padding-bottom:8px;">
-          <p style="font-size:22px; font-weight:bold;">
-            ${item.qty || 1}x ${item.name} ${item.size ? `(${item.size})` : ""}
-          </p>
-          ${item.flavors ? `<p>🍕 Sabores: ${item.flavors.join(" / ")}</p>` : ""}
-          ${item.crust ? `<p>🍞 Borda: ${item.crust.nome}</p>` : ""}
-          ${item.addons?.length ? `<p>➕ Adicionais: ${item.addons.map((a) => a.nome).join(", ")}</p>` : ""}
-          ${item.observacoes ? `<p style="color:red; font-weight:bold; font-size:18px;">📝 OBS: ${item.observacoes}</p>` : ""}
-        </div>
-      `
-      )
-      .join("");
+    const itensHTML = (pedido.items || []).map((item) => `
+      <div style="margin-bottom:18px; border-bottom:1px dashed #000; padding-bottom:8px;">
+        <p style="font-size:22px; font-weight:bold;">
+          ${item.qty || 1}x ${item.name} ${item.size ? `(${item.size})` : ""}
+        </p>
+        ${item.flavors ? `<p>🍕 Sabores: ${item.flavors.join(" / ")}</p>` : ""}
+        ${item.crust ? `<p>🍞 Borda: ${item.crust.nome}</p>` : ""}
+        ${item.addons?.length ? `<p>➕ Adicionais: ${item.addons.map((a) => a.nome).join(", ")}</p>` : ""}
+        ${item.customizacoes ? customizacoesHTML(item.customizacoes) : ""}
+        ${item.observacoes ? `<p style="color:red; font-weight:bold; font-size:18px;">📝 OBS: ${item.observacoes}</p>` : ""}
+      </div>
+    `).join("");
 
     const conteudo = `
       <html>
@@ -142,7 +149,6 @@ export default function OrdersAdmin() {
         </body>
       </html>
     `;
-
     const janela = window.open("", "_blank");
     janela.document.write(conteudo);
     janela.document.close();
@@ -151,23 +157,19 @@ export default function OrdersAdmin() {
 
   const printOrderDelivery = (pedido) => {
     const numeroPedido = pedido.orderNumber || pedido.id.slice(-4).toUpperCase();
-
-    const itensHTML = (pedido.items || [])
-      .map(
-        (item) => `
-        <tr>
-          <td>${item.qty || 1}</td>
-          <td>
-            ${item.name} ${item.size ? `(${item.size})` : ""}
-            ${item.flavors ? `<br/>🍕 ${item.flavors.join(" / ")}` : ""}
-            ${item.crust ? `<br/>🍞 ${item.crust.nome}` : ""}
-            ${item.addons?.length ? `<br/>➕ ${item.addons.map((a) => a.nome).join(", ")}` : ""}
-          </td>
-          <td style="text-align:right;">R$ ${(parsePreco(item.price) * (item.qty || 1)).toFixed(2)}</td>
-        </tr>
-      `
-      )
-      .join("");
+    const itensHTML = (pedido.items || []).map((item) => `
+      <tr>
+        <td>${item.qty || 1}</td>
+        <td>
+          ${item.name} ${item.size ? `(${item.size})` : ""}
+          ${item.flavors ? `<br/>🍕 ${item.flavors.join(" / ")}` : ""}
+          ${item.crust ? `<br/>🍞 ${item.crust.nome}` : ""}
+          ${item.addons?.length ? `<br/>➕ ${item.addons.map((a) => a.nome).join(", ")}` : ""}
+          ${item.customizacoes ? `<br/>${customizacoesHTML(item.customizacoes).replace(/<p/g, "<span").replace(/<\/p>/g, "</span><br/>")}` : ""}
+        </td>
+        <td style="text-align:right;">R$ ${(parsePreco(item.price) * (item.qty || 1)).toFixed(2)}</td>
+      </tr>
+    `).join("");
 
     const conteudo = `
       <html>
@@ -188,7 +190,6 @@ export default function OrdersAdmin() {
         </body>
       </html>
     `;
-
     const janela = window.open("", "_blank");
     janela.document.write(conteudo);
     janela.document.close();
@@ -202,12 +203,11 @@ export default function OrdersAdmin() {
     return data.toISOString().slice(0, 10) === hoje;
   });
 
-  const totalPedidosHoje = pedidosHoje.length;
-  const totalFinalizados = pedidosHoje.filter((o) => (o.status || "").toUpperCase() === "FINALIZADO").length;
-  const valorTotalHoje = pedidosHoje.reduce((acc, o) => acc + parsePreco(o.total), 0);
-  const ticketMedio = totalPedidosHoje > 0 ? valorTotalHoje / totalPedidosHoje : 0;
-
-  const ativos = orders.filter((o) => (o.status || "").trim().toUpperCase() !== "FINALIZADO");
+  const totalPedidosHoje  = pedidosHoje.length;
+  const totalFinalizados  = pedidosHoje.filter((o) => (o.status || "").toUpperCase() === "FINALIZADO").length;
+  const valorTotalHoje    = pedidosHoje.reduce((acc, o) => acc + parsePreco(o.total), 0);
+  const ticketMedio       = totalPedidosHoje > 0 ? valorTotalHoje / totalPedidosHoje : 0;
+  const ativos            = orders.filter((o) => (o.status || "").trim().toUpperCase() !== "FINALIZADO");
 
   return (
     <div className="bg-slate-50 min-h-screen p-4 md:p-8 font-sans text-slate-900">
@@ -222,9 +222,7 @@ export default function OrdersAdmin() {
           <button
             onClick={toggleSound}
             className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-bold transition-all active:scale-95 ${
-              soundEnabled
-                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
-                : "bg-slate-200 text-slate-600"
+              soundEnabled ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" : "bg-slate-200 text-slate-600"
             }`}
           >
             {soundEnabled ? <FiBell className="animate-bounce" /> : <FiBellOff />}
@@ -233,10 +231,10 @@ export default function OrdersAdmin() {
         </header>
 
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Hoje" value={totalPedidosHoje} color="blue" />
-          <StatCard label="Finalizados" value={totalFinalizados} color="emerald" />
-          <StatCard label="Faturamento" value={`R$ ${valorTotalHoje.toFixed(2)}`} color="purple" />
-          <StatCard label="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} color="pink" />
+          <StatCard label="Total Hoje"   value={totalPedidosHoje}                        color="blue"    />
+          <StatCard label="Finalizados"  value={totalFinalizados}                         color="emerald" />
+          <StatCard label="Faturamento"  value={`R$ ${valorTotalHoje.toFixed(2)}`}        color="purple"  />
+          <StatCard label="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`}           color="pink"    />
         </section>
 
         <main>
@@ -268,7 +266,7 @@ export default function OrdersAdmin() {
 }
 
 function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrder }) {
-  const status = (order.status || "PENDENTE").toUpperCase();
+  const status    = (order.status || "PENDENTE").toUpperCase();
   const isPendente = status === "PENDENTE";
 
   return (
@@ -302,8 +300,25 @@ function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrd
         <p className="font-bold text-slate-700 flex items-center gap-2">👤 {order.customer || "Cliente Final"}</p>
         <div className="text-sm text-slate-600 divide-y divide-slate-200">
           {(order.items || []).map((item, idx) => (
-            <div key={idx} className="py-2 flex justify-between">
-              <span><b className="text-blue-600">{item.qty}x</b> {item.name} <small className="text-slate-400">{item.size}</small></span>
+            <div key={idx} className="py-2">
+              <div className="flex justify-between">
+                <span>
+                  <b className="text-blue-600">{item.qty}x</b> {item.name}{" "}
+                  <small className="text-slate-400">{item.size}</small>
+                </span>
+              </div>
+              {/* Sabores / borda / adicionais */}
+              {item.flavors?.length > 0 && (
+                <p className="text-xs text-slate-500 pl-2">🍕 {item.flavors.join(" + ")}</p>
+              )}
+              {item.crust && (
+                <p className="text-xs text-slate-500 pl-2">🍞 Borda: {item.crust.nome}</p>
+              )}
+              {item.addons?.length > 0 && (
+                <p className="text-xs text-slate-500 pl-2">➕ {item.addons.map((a) => a.nome).join(", ")}</p>
+              )}
+              {/* ── NOVO: customizações ── */}
+              <CustomizacoesLista customizacoes={item.customizacoes} />
             </div>
           ))}
         </div>
@@ -316,13 +331,13 @@ function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrd
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <ActionButton active={status === "PENDENTE"} onClick={() => updateStatus(order.id, "PENDENTE")} label="Pendente" icon={<FiClock />} color="orange" />
-        <ActionButton active={status === "EM ANDAMENTO"} onClick={() => updateStatus(order.id, "EM ANDAMENTO")} label="Preparar" icon={<FiPlay />} color="blue" />
-        <ActionButton active={false} onClick={() => updateStatus(order.id, "FINALIZADO")} label="Concluir" icon={<FiCheck />} color="emerald" />
+        <ActionButton active={status === "PENDENTE"}      onClick={() => updateStatus(order.id, "PENDENTE")}      label="Pendente" icon={<FiClock />}  color="orange"  />
+        <ActionButton active={status === "EM ANDAMENTO"} onClick={() => updateStatus(order.id, "EM ANDAMENTO")} label="Preparar" icon={<FiPlay />}   color="blue"    />
+        <ActionButton active={false}                      onClick={() => updateStatus(order.id, "FINALIZADO")}    label="Concluir" icon={<FiCheck />}  color="emerald" />
       </div>
 
       <div className="flex gap-2 border-t border-slate-100 pt-4">
-        <button onClick={() => printKitchen(order)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
+        <button onClick={() => printKitchen(order)}  className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
           <FiPrinter /> Cozinha
         </button>
         <button onClick={() => printDelivery(order)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors">
@@ -338,10 +353,10 @@ function OrderCard({ order, updateStatus, printKitchen, printDelivery, deleteOrd
 
 function StatCard({ label, value, color }) {
   const colors = {
-    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    blue:    "bg-blue-50 text-blue-700 border-blue-100",
     emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    purple: "bg-purple-50 text-purple-700 border-purple-100",
-    pink: "bg-pink-50 text-pink-700 border-pink-100",
+    purple:  "bg-purple-50 text-purple-700 border-purple-100",
+    pink:    "bg-pink-50 text-pink-700 border-pink-100",
   };
   return (
     <div className={`p-6 rounded-[2rem] border-2 shadow-sm ${colors[color]}`}>
@@ -354,7 +369,7 @@ function StatCard({ label, value, color }) {
 function ActionButton({ active, onClick, label, icon, color }) {
   const colorMap = {
     orange: active ? "bg-orange-500 text-white shadow-lg shadow-orange-200" : "bg-orange-50 text-orange-500",
-    blue: active ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-blue-50 text-blue-600",
+    blue:   active ? "bg-blue-600 text-white shadow-lg shadow-blue-200"   : "bg-blue-50 text-blue-600",
     emerald: "bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white",
   };
   return (
