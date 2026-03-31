@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { X, ShoppingCart, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,6 +16,14 @@ const formatBRL = (value) => {
 };
 
 export default function CartPanel({ open, onClose, cart, onCheckout }) {
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    if (open && listRef.current) {
+      listRef.current.scrollTop = 0;
+    }
+  }, [open]);
+
   const totalCalc = cart.items.reduce(
     (acc, l) => acc + (l.qty || 1) * parsePreco(l.price),
     0
@@ -61,7 +70,7 @@ export default function CartPanel({ open, onClose, cart, onCheckout }) {
             </div>
 
             {/* Lista de Itens (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+            <div ref={listRef} className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
               {cart.items.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-gray-300">

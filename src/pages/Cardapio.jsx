@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useContext } from "react";
 import { db } from "../firebase";
 import { collection, onSnapshot, getDocs, doc, getDoc } from "firebase/firestore";
 import useCart from "../hooks/useCart";
@@ -13,6 +13,7 @@ import { GiFullPizza } from "react-icons/gi";
 import { FaInstagram } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useParams } from "react-router-dom";
+import { CartOpenContext } from "../App";
 
 import PizzaBuilderModal from "../components/BuiderModal/PizzaBuilderModal";
 import PastelBuilderModal from "../components/BuiderModal/PastelBuilderModal.jsx";
@@ -49,9 +50,10 @@ export default function Cardapio() {
   const [products, setProducts]                   = useState([]);
   const [hasLoadedProducts, setHasLoadedProducts] = useState(false);
   const [paineis, setPaineis]                     = useState([]);
-  // ── NOVO: mapa de docData por opcaoId ──
-  // { "Acai": { produtos: [...], complementos: [...], caldas: [...] }, ... }
+  
   const [docDataMap, setDocDataMap]               = useState({});
+
+  const [, setCartOpen] = useContext(CartOpenContext);
 
   const [search, setSearch]                       = useState("");
   const [open, setOpen]                           = useState(false);
@@ -67,6 +69,8 @@ export default function Cardapio() {
   const [pastelPreset, setPastelPreset]           = useState(null);
 
   const isLoadingProducts = !hasLoadedProducts;
+
+  useEffect(() => { setCartOpen(open); }, [open, setCartOpen]);
 
   // ── Carrega painéis ativos + docData de cada um ──
   useEffect(() => {

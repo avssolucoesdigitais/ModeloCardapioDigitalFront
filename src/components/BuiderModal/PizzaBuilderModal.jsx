@@ -180,7 +180,7 @@ export default function PizzaBuilderModal({ open, onClose, products, baseProduct
                   <div className="space-y-4">
                     <h3 className="text-sm font-bold text-gray-400 uppercase">Escolha a Borda</h3>
                     <div className="grid gap-3">
-                      <button onClick={() => setSelectedBorda(null)} className={`p-4 rounded-2xl border-2 text-left font-bold ${!selectedBorda ? "border-orange-500 bg-orange-50" : "bg-white border-transparent shadow-sm"}`}>Sem Borda</button>
+                      <button onClick={() => setSelectedBorda(null)} className={`p-4 rounded-2xl border-2 text-left font-bold ${!selectedBorda ? "border-orange-500 bg-orange-50" : "bg-white border-transparent shadow-sm"}`}>Borda Tradicional</button>
                       {bordas.map((b, i) => (
                         <button key={i} onClick={() => setSelectedBorda(b)} className={`flex justify-between items-center p-4 rounded-2xl border-2 transition-all ${selectedBorda?.nome === b.nome ? "border-orange-500 bg-orange-50" : "bg-white border-transparent shadow-sm"}`}>
                           <span className="font-bold text-gray-700">{b.nome}</span>
