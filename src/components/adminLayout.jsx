@@ -2,10 +2,10 @@ import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMenu, FiX, FiBox, FiClock, FiSettings, FiLogOut, FiGrid } from "react-icons/fi";
-import { FaPizzaSlice, FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
+import { FiMenu, FiX, FiBox, FiSettings, FiLogOut, FiGrid, FiMonitor, FiBarChart2 } from "react-icons/fi";
+import { FaPizzaSlice, FaInstagram, FaWhatsapp } from "react-icons/fa";
+import { MdTableRestaurant } from "react-icons/md";
 import logo from "../assets/logo.icon.png";
-import { FiBarChart2 } from "react-icons/fi";
 
 export default function AdminLayout() {
   const location = useLocation();
@@ -14,11 +14,13 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const menuItems = [
-    { path: `/${lojaSlug}/admin/pedidos`,   label: "Pedidos",       icon: <FiBox size={20} /> },
-    { path: `/${lojaSlug}/admin/produtos`,  label: "Produtos",      icon: <FaPizzaSlice size={18} /> },
-    { path: `/${lojaSlug}/admin/paineis`,   label: "Painéis",       icon: <FiGrid size={20} /> },
-    { path: `/${lojaSlug}/admin/crm`,       label: "CRM",           icon: <FiBarChart2 size={20} /> },
-    { path: `/${lojaSlug}/admin/config`,    label: "Configuração",  icon: <FiSettings size={20} /> },
+    { path: `/${lojaSlug}/admin/pedidos`,    label: "Pedidos",       icon: <FiBox size={20} /> },
+    { path: `/${lojaSlug}/admin/produtos`,   label: "Produtos",      icon: <FaPizzaSlice size={18} /> },
+    { path: `/${lojaSlug}/admin/paineis`,    label: "Painéis",       icon: <FiGrid size={20} /> },
+    { path: `/${lojaSlug}/admin/mesas`,      label: "Mesas",         icon: <MdTableRestaurant size={20} /> },
+    { path: `/${lojaSlug}/admin/crm`,        label: "CRM",           icon: <FiBarChart2 size={20} /> },
+    { path: `/${lojaSlug}/admin/lacartapdv`, label: "LaCartaPDV",    icon: <FiMonitor size={20} />, newTab: true },
+    { path: `/${lojaSlug}/admin/config`,     label: "Configuração",  icon: <FiSettings size={20} /> },
   ];
 
   const handleLogout = async () => {
@@ -61,15 +63,11 @@ export default function AdminLayout() {
         <nav className="flex-1 px-4 py-8 space-y-1">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`relative group flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold transition-all
-                  ${isActive ? "text-white" : "hover:text-white hover:bg-slate-800/50"}`}
-              >
-                {isActive && (
+            const sharedClass = `relative group flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold transition-all
+              ${isActive ? "text-white" : "hover:text-white hover:bg-slate-800/50"}`;
+            const inner = (
+              <>
+                {isActive && !item.newTab && (
                   <motion.div
                     layoutId="activeNav"
                     className="absolute inset-0 bg-blue-600 rounded-xl -z-10 shadow-lg shadow-blue-900/20"
@@ -79,6 +77,30 @@ export default function AdminLayout() {
                   {item.icon}
                 </span>
                 {item.label}
+              </>
+            );
+            if (item.newTab) {
+              return (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setSidebarOpen(false)}
+                  className={sharedClass}
+                >
+                  {inner}
+                </a>
+              );
+            }
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={sharedClass}
+              >
+                {inner}
               </Link>
             );
           })}
@@ -96,11 +118,12 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex justify-around mb-4">
-            <a href="https://wa.me/5585921926083" target="_blank" rel="noreferrer" className="p-2 bg-slate-800 rounded-lg hover:text-green-400 transition-colors">
-              <FaWhatsapp size={16}/>
+            <a href="https://wa.me/5585921926083" target="_blank" rel="noreferrer"
+              className="p-2 bg-slate-800 rounded-lg hover:text-green-400 transition-colors">
+              <FaWhatsapp size={16} />
             </a>
             <a href="#" className="p-2 bg-slate-800 rounded-lg hover:text-pink-400 transition-colors">
-              <FaInstagram size={16}/>
+              <FaInstagram size={16} />
             </a>
           </div>
 
@@ -116,7 +139,8 @@ export default function AdminLayout() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 px-8 items-center justify-between hidden md:flex">
           <span className="text-slate-400 font-medium">
-            Painel Administrativo &gt; <span className="text-slate-900 font-bold">{location.pathname.split('/').pop()}</span>
+            Painel Administrativo &gt;{" "}
+            <span className="text-slate-900 font-bold">{location.pathname.split("/").pop()}</span>
           </span>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>

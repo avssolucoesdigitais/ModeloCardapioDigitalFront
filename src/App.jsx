@@ -11,9 +11,12 @@ import AdminLayout from "./components/adminLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
 import GerenciadorPaineis from "./pages/GerenciadorPaineis";
+import GerenciadorMesas from "./pages/GerenciadorMesas";
 import CrmAdmin from "./pages/CrmAdmin";
 import LandingPage from "./pages/LandingPage";
+import PDVAdmin from "./pages/PDVadmin";
 
+// ── Wrappers ──────────────────────────────────
 function LojaConfigAdminWrapper() {
   const { lojaSlug } = useParams();
   return <LojaConfigAdmin lojaId={lojaSlug} />;
@@ -24,12 +27,20 @@ function GerenciadorPaineisWrapper() {
   return <GerenciadorPaineis lojaId={lojaSlug} />;
 }
 
+function GerenciadorMesasWrapper() {
+  const { lojaSlug } = useParams();
+  return <GerenciadorMesas lojaId={lojaSlug} />;
+}
+
 function CrmAdminWrapper() {
   const { lojaSlug } = useParams();
   return <CrmAdmin lojaId={lojaSlug} />;
 }
 
-// Wrapper que lê o lojaSlug e passa pro ProtectedRoute como prop
+function PDVAdminWrapper() {
+  return <PDVAdmin />;
+}
+
 function AdminProtected() {
   const { lojaSlug } = useParams();
   return (
@@ -39,6 +50,7 @@ function AdminProtected() {
   );
 }
 
+// ── App ───────────────────────────────────────
 function App() {
   return (
     <Router>
@@ -60,14 +72,16 @@ function App() {
 
         <Route path="/:lojaSlug" element={<Cardapio />} />
         <Route path="/:lojaSlug/login" element={<Login />} />
+        <Route path="/:lojaSlug/admin/lacartapdv" element={<PDVAdminWrapper />} />
 
         <Route path="/:lojaSlug/admin" element={<AdminProtected />}>
           <Route index element={<Navigate to="pedidos" replace />} />
-          <Route path="pedidos"   element={<OrdersAdmin />} />
-          <Route path="produtos"  element={<OpcoesCategoriaAdmin />} />
-          <Route path="config"    element={<LojaConfigAdminWrapper />} />
-          <Route path="paineis"   element={<GerenciadorPaineisWrapper />} />
-          <Route path="crm"       element={<CrmAdminWrapper />} />
+          <Route path="pedidos"     element={<OrdersAdmin />} />
+          <Route path="produtos"    element={<OpcoesCategoriaAdmin />} />
+          <Route path="config"      element={<LojaConfigAdminWrapper />} />
+          <Route path="paineis"     element={<GerenciadorPaineisWrapper />} />
+          <Route path="crm"         element={<CrmAdminWrapper />} />
+          <Route path="mesas"       element={<GerenciadorMesasWrapper />} />
         </Route>
 
       </Routes>
