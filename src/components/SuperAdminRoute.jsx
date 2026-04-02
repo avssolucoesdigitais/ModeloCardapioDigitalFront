@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
-const SUPER_ADMIN_UID = "RBVQr2GnvubTbUv7UWqjdQ0nUD43";
+const SUPER_ADMIN_UID = import.meta.env.VITE_SUPER_ADMIN_UID;
 
 /**
  * SuperAdminRoute — protege a rota /superadmin.

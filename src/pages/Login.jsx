@@ -7,7 +7,7 @@ import Footer from "../components/Footer";
 import logo from "../assets/logo.icon.png";
 import { motion } from "framer-motion";
 import { FaInstagram, FaLinkedin, FaWhatsapp, FaEnvelope, FaLock } from "react-icons/fa";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { registrarSessao } from "../hooks/useAuth";
 
 const SUPER_ADMIN_UID = import.meta.env.VITE_SUPER_ADMIN_UID;
@@ -17,6 +17,7 @@ export default function Login() {
   const [senha, setSenha]   = useState("");
   const [erro, setErro]     = useState("");
   const [loading, setLoading] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const navigate  = useNavigate();
   const location  = useLocation();
   const { lojaSlug } = useParams();
@@ -97,9 +98,13 @@ export default function Login() {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
                   <FaLock size={16} />
                 </div>
-                <input type="password" placeholder="Sua senha secreta" value={senha}
+                <input type={mostrarSenha ? "text" : "password"} placeholder="Sua senha secreta" value={senha}
                   onChange={(e) => setSenha(e.target.value)} required
-                  className="w-full bg-gray-50 border-none ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-600 pl-11 pr-4 py-4 rounded-2xl outline-none transition-all text-gray-700 font-medium" />
+                  className="w-full bg-gray-50 border-none ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-600 pl-11 pr-11 py-4 rounded-2xl outline-none transition-all text-gray-700 font-medium" />
+                <button type="button" onClick={() => setMostrarSenha(v => !v)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-blue-600 transition-colors">
+                  {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
 
               {erro && (

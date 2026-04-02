@@ -3,13 +3,14 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
 import { registrarSessao } from "../hooks/useAuth";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 export default function SuperAdminLogin() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -55,12 +56,18 @@ export default function SuperAdminLogin() {
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-600">Senha</span>
-            <input
-              type="password" required autoComplete="current-password"
-              value={senha} onChange={(e) => setSenha(e.target.value)}
-              className="mt-1 w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500 outline-none transition-all text-sm"
-              placeholder="••••••••"
-            />
+            <div className="relative mt-1">
+              <input
+                type={mostrarSenha ? "text" : "password"} required autoComplete="current-password"
+                value={senha} onChange={(e) => setSenha(e.target.value)}
+                className="w-full h-12 px-4 pr-11 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500 outline-none transition-all text-sm"
+                placeholder="••••••••"
+              />
+              <button type="button" onClick={() => setMostrarSenha(v => !v)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-orange-500 transition-colors">
+                {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </label>
 
           {erro && (

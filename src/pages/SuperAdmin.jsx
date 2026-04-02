@@ -12,7 +12,7 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import avsLogo from "../assets/AVS - Logotipo.png";
 
-const SUPER_ADMIN_UID = "RBVQr2GnvubTbUv7UWqjdQ0nUD43";
+const SUPER_ADMIN_UID = import.meta.env.VITE_SUPER_ADMIN_UID;
 const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 
 function slugify(text) {
